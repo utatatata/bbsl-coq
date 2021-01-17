@@ -1,24 +1,24 @@
-Require Import Classical_Pred_Type Reals ROrderedType ConstructiveCauchyReals String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
+Require Import Classical_Pred_Type QArith QOrderedType Qminmax String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
 Import ListNotations.
 
 Declare Scope Interval_scope.
 
 Local Open Scope Interval_scope.
 Local Open Scope bool_scope.
-Local Open Scope R_scope.
+Local Open Scope Q_scope.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
 
 
-Definition Interval : Type := R * R.
+Definition Interval : Type := Q * Q.
 
 
-Definition lower (i : Interval) : R :=
+Definition lower (i : Interval) : Q :=
   match i with
   | (l, _) => l
   end.
 
-Definition upper (i : Interval) : R :=
+Definition upper (i : Interval) : Q :=
   match i with
   | (_, u) => u
   end.
@@ -26,22 +26,22 @@ Definition upper (i : Interval) : R :=
 Definition IisEmpty (i : Interval) : Prop :=
   lower i > upper i.
 
-Definition contains (v : R) (i : Interval) : Prop :=
-  (lower i <= v /\ v <= upper i)%R.
+Definition contains (v : Q) (i : Interval) : Prop :=
+  (lower i <= v /\ v <= upper i)%Q.
 
 Lemma contains_lower : forall i, ~IisEmpty i -> contains (lower i) i.
 Proof.
   intros. unfold contains. unfold IisEmpty in H.
-  split. r_order. r_order.
+  split. q_order. q_order.
 Qed.
 
 Lemma contains_upper : forall i, ~IisEmpty i -> contains (upper i) i.
 Proof.
   intros. unfold contains. unfold IisEmpty in H.
-  split. r_order. r_order.
+  split. q_order. q_order.
 Qed.
 
-Definition width (i : Interval) : R :=
+Definition width (i : Interval) : Q :=
   upper i - lower i.
 
 Definition Ilt (i0 i1 : Interval) : Prop :=
@@ -74,7 +74,7 @@ Definition Ieq (i0 i1 : Interval) : Prop :=
   lower i0 = lower i1 /\ upper i0 = upper i1.
 
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
-  exists r : R, contains r i0 /\ contains r i1.
+  exists q : Q, contains q i0 /\ contains q i1.
 
 Lemma Ioverlap_comm : forall i0 i1, Ioverlap i0 i1 <-> Ioverlap i1 i0.
 Proof.
@@ -94,7 +94,7 @@ Lemma Ilt_not_overlap : forall i0 i1,
 Proof.
   unfold Ilt. unfold Ioverlap. unfold contains. unfold not.
   intros.
-  destruct H0. destruct H0. destruct H0. destruct H1. r_order.
+  destruct H0. destruct H0. destruct H0. destruct H1. q_order.
 Qed.
 
 Lemma Igt_not_overlap : forall i0 i1,
@@ -111,7 +111,7 @@ Proof.
   unfold Ilt. unfold Ioverlap. unfold contains. unfold not.
   intros.
   destruct H. destruct H. destruct H. destruct H1.
-  r_order.
+  q_order.
 Qed.
 
 Lemma Ioverlap_not_gt : forall i0 i1, Ioverlap i0 i1 -> ~Igt i0 i1.
@@ -126,7 +126,7 @@ Lemma Ilt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> 
 Proof.
   unfold Ilt. intros.
   unfold IisEmpty in H. destruct H.
-  r_order.
+  q_order.
 Qed.
 
 Lemma Igt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Igt i0 i1 -> ~Igt i1 i0.
@@ -161,8 +161,8 @@ Proof.
   unfold IisEmpty. unfold Isubset. unfold Ioverlap. unfold contains.
   intros. destruct H. destruct H0.
   eexists (lower i0). split.
-  - split. r_order. r_order.
-  - split. r_order. r_order.
+  - split. q_order. q_order.
+  - split. q_order. q_order.
 Qed.
 
 Lemma Isupset_overlap :
@@ -202,7 +202,7 @@ Lemma exclusive_Ilt_Ioverlap : forall i0 i1, Ilt i0 i1 <-> ~Ioverlap i0 i1.
 *)
 
 Definition Iintersection (i0 i1 : Interval) : Interval :=
-  (Rmax (lower i0) (lower i1), Rmin (upper i0) (upper i1)).
+  (Qmax (lower i0) (lower i1), Qmin (upper i0) (upper i1)).
 
 (* TODO
 Lemma Iempty_intersection : forall i0 i1, IisEmpty i0 -> IisEmpty (Iintersection i0 i1).
@@ -223,16 +223,16 @@ Definition projy (bb : BB) : Interval :=
   | (_, y) => y
   end.
 
-Definition projxl (bb : BB) : R :=
+Definition projxl (bb : BB) : Q :=
   lower (projx bb).
 
-Definition projxu (bb : BB) : R :=
+Definition projxu (bb : BB) : Q :=
   upper (projx bb).
 
-Definition projyl (bb : BB) : R :=
+Definition projyl (bb : BB) : Q :=
   lower (projy bb).
 
-Definition projyu (bb : BB) : R :=
+Definition projyu (bb : BB) : Q :=
   upper (projy bb).
 
 Definition BBisEmpty (bb : BB) : Prop :=
@@ -244,8 +244,8 @@ Definition BBoverlap (bb0 bb1 : BB) : Prop :=
 Definition BBintersection (bb0 bb1 : BB) : BB :=
   (Iintersection (projx bb0) (projx bb1), Iintersection (projy bb0) (projy bb1)).
 
-Definition BBarea (bb : BB) : R :=
-  Rmax 0 (width (projx bb) * width (projy bb)).
+Definition BBarea (bb : BB) : Q :=
+  Qmax 0 (width (projx bb) * width (projy bb)).
 
 Definition SetBB : Type := list BB.
 
@@ -270,24 +270,24 @@ Definition SBBintersection (sbb0 sbb1 : SetBB) : SetBB :=
 Definition SBBunion (sbb0 sbb1 : SetBB) : SetBB :=
   sbb0 ++ sbb1.
 
-Definition BB2area (bb0 bb1 : BB) : R :=
+Definition BB2area (bb0 bb1 : BB) : Q :=
   BBarea bb0 + BBarea bb1 - BBarea (BBintersection bb0 bb1).
 
-Fixpoint _SetBBarea (sbb accum : SetBB) (area : R) : R :=
+Fixpoint _SetBBarea (sbb accum : SetBB) (area : Q) : Q :=
   match sbb with
   | nil => area
   | cons bb sbb' =>
     let sbb'' := _BB_SBBintersection bb accum nil in
-    let sbb''area := List.fold_right Rplus 0 (List.map BBarea sbb'') in
+    let sbb''area := List.fold_right Qplus 0 (List.map BBarea sbb'') in
     _SetBBarea sbb' (cons bb accum) (area + BBarea bb - sbb''area)
   end.
 
 (* TODO wrong algorithm *)
-Definition SetBBarea (sbb : SetBB) : R :=
+Definition SetBBarea (sbb : SetBB) : Q :=
   _SetBBarea sbb nil 0.
 
 (* TODO what happen at 0-divided ? *)
-Definition RAT (sbb0 sbb1 : SetBB) : R :=
+Definition RAT (sbb0 sbb1 : SetBB) : Q :=
   SetBBarea sbb0 / SetBBarea sbb1.
 
 Inductive SBBexp : Set :=
@@ -304,8 +304,8 @@ Inductive Iexp : Set :=
   | EXP_projx (bb : BBexp) | EXP_projy (bb : BBexp)
   | EXP_Iintersection (i0 i1 : Iexp).
 
-Inductive Rexp : Set :=
-  | EXP_Rvar (x : string)
+Inductive Qexp : Set :=
+  | EXP_Qvar (x : string)
   | EXP_width (i : Iexp) | EXP_RAT (sbb0 sbb1 : SBBexp)
   | EXP_projxl (bb : BBexp) | EXP_projxu (bb : BBexp)
   | EXP_projyl (bb : BBexp) | EXP_projyu (bb : BBexp).
@@ -316,7 +316,7 @@ Inductive Bexp : Set :=
   | EXP_BBoverlap (bb0 bb1 : BBexp)
   | EXP_Ilt (i0 i1 : Iexp) | EXP_Igt (i0 i1 : Iexp) | EXP_Ieq (i0 i1 : Iexp)
   | EXP_Ioverlap (i0 i1 : Iexp) | EXP_Isubset (i0 i1 : Iexp) | EXP_Isupset (i0 i1 : Iexp)
-  | EXP_Rlt (r0 r1 : Rexp) | EXP_Rgt (r0 r1 : Rexp) | EXP_Req (r0 r1 : Rexp).
+  | EXP_Qlt (q0 q1 : Qexp) | EXP_Qgt (q0 q1 : Qexp) | EXP_Qeq (q0 q1 : Qexp).
 
 Definition Cond : Set := Bexp.
 
@@ -324,7 +324,7 @@ Inductive Def : Set :=
   | DEF_SBB (x : string) (sbb : SBBexp)
   | DEF_BB (x : string) (bb : BBexp)
   | DEF_I (x : string) (i : Iexp)
-  | DEF_R (x : string) (r : Rexp)
+  | DEF_Q (x : string) (q : Qexp)
   | DEF_B (x : string) (b : Bexp).
 
 Definition LetBexp : Set := list Def * Bexp.
@@ -336,7 +336,7 @@ Definition Spec : Set := Cond * list Case.
 Module Import M := FMapList.Make(String_as_OT).
 
 Inductive Value : Type :=
-  | Vb (x : Prop) | Vr (x : R) | Vi (x : Interval)
+  | Vb (x : Prop) | Vq (x : Q) | Vi (x : Interval)
   | Vbb (x : BB) | Vsbb (x : SetBB).
 
 Definition Env := M.t Value.
@@ -398,11 +398,11 @@ Fixpoint Ai (expr : Iexp) (env : Env) : option Interval :=
     end
   end.
 
-Definition Ar (expr : Rexp) (env : Env) : option R :=
+Definition Aq (expr : Qexp) (env : Env) : option Q :=
   match expr with
-  | EXP_Rvar s =>
+  | EXP_Qvar s =>
     match find s env with
-    | Some (Vr r) => Some r
+    | Some (Vq q) => Some q
     | _ => None
     end
   | EXP_width i_expr =>
@@ -494,19 +494,19 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
     | Some i0, Some i1 => Some (Isupset i0 i1)
     | _, _ => None
     end
-  | EXP_Rlt r_expr0 r_expr1 =>
-    match Ar r_expr0 env, Ar r_expr1 env with
-    | Some r0, Some r1 => Some (r0 < r1)%R
+  | EXP_Qlt q_expr0 q_expr1 =>
+    match Aq q_expr0 env, Aq q_expr1 env with
+    | Some q0, Some q1 => Some (q0 < q1)%Q
     | _, _ => None
     end
-  | EXP_Rgt r_expr0 r_expr1 =>
-    match Ar r_expr0 env, Ar r_expr1 env with
-    | Some r0, Some r1 => Some (r0 < r1)%R
+  | EXP_Qgt q_expr0 q_expr1 =>
+    match Aq q_expr0 env, Aq q_expr1 env with
+    | Some q0, Some q1 => Some (q0 < q1)%Q
     | _, _ => None
     end
-  | EXP_Req r_expr0 r_expr1 =>
-    match Ar r_expr0 env, Ar r_expr1 env with
-    | Some r0, Some r1 => Some (r0 = r1)
+  | EXP_Qeq q_expr0 q_expr1 =>
+    match Aq q_expr0 env, Aq q_expr1 env with
+    | Some q0, Some q1 => Some (q0 = q1)
     | _, _ => None
     end
   end.
@@ -530,9 +530,9 @@ Definition Cdef (def : Def) (env : Env) : option Env :=
     | Some i => Some (add s (Vi i) env)
     | _ => None
     end
-  | DEF_R s r_expr =>
-    match Ar r_expr env with
-    | Some r => Some (add s (Vr r) env)
+  | DEF_Q s q_expr =>
+    match Aq q_expr env with
+    | Some q => Some (add s (Vq q) env)
     | _ => None
     end
   | DEF_B s b_expr =>
@@ -591,11 +591,11 @@ Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
     end
   end.
 
-Definition testEnv := add "r1" (Vr 1) (add "r0" (Vr 0) (empty Value)).
+Definition testEnv := add "q1" (Vq 1) (add "q0" (Vq 0) (empty Value)).
 
-Lemma foo : B (EXP_Rlt (EXP_Rvar "r0") (EXP_Rvar "r1")) testEnv
-  = match Ar (EXP_Rvar "r0") testEnv, Ar (EXP_Rvar "r1") testEnv with
-    | Some r0, Some r1 => Some (r0 < r1)
+Lemma foo : B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) testEnv
+  = match Aq (EXP_Qvar "q0") testEnv, Aq (EXP_Qvar "q1") testEnv with
+    | Some q0, Some q1 => Some (q0 < q1)
     | _, _ => None
   end.
 Proof.
