@@ -1,4 +1,4 @@
-Require Import Classical_Pred_Type QArith QOrderedType Qminmax GenericMinMax String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
+Require Import ClassicalDescription QArith QOrderedType Qminmax GenericMinMax String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
 Import ListNotations.
 
 Declare Scope Interval_scope.
@@ -54,6 +54,16 @@ Proof.
   intros.
   unfold Isubset. unfold Isupset. unfold iff.
   split. trivial. trivial.
+Qed.
+
+Lemma Isubset_trans : forall i0 i1 i2, Isubset i0 i1 /\ Isubset i1 i2 -> Isubset i0 i2.
+Proof.
+  unfold Isubset.
+  intros.
+  simpl. simpl in H. destruct H. destruct H. destruct H0.
+  split.
+  - apply (Qlt_trans (lower i2) (lower i1) (lower i0) H0 H).
+  - apply (Qlt_trans (upper i0) (upper i1) (upper i2) H1 H2). 
 Qed.
 
 Definition Ilt (i0 i1 : Interval) : Prop :=
@@ -130,40 +140,84 @@ Proof.
   split. apply Qeq_refl. apply Qeq_refl.
 Qed.
 
-(* TODO
 Lemma Iempty_intersection : forall i0 i1, IisEmpty i0 -> IisEmpty (Iintersection i0 i1).
 Proof.
-  unfold IisEmpty. unfold Iintersection. simpl. intros.
-  apply (Rmax_Rle (lower i0) (lower i1) (Rmin (upper i0) (upper i1))).
-*)
+  unfold IisEmpty. unfold Iintersection. simpl.
+  intros. destruct i0. destruct i1. simpl. simpl in H.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
+  rewrite (Q.max_lt_iff q q1 q0).
+  left. left. assumption.
+Qed.
+
+Lemma Isubset_intersection_l : forall i0 i1, Isubset i0 i1 -> Iintersection i0 i1 == i0.
+Proof.
+  unfold Isubset. unfold Iintersection.
+  destruct i0. destruct i1. simpl.
+  intros. destruct H.
+  unfold Ieq. simpl. split.
+  - rewrite (Q.max_l q q1 (Qlt_le_weak q1 q H)). apply Qeq_refl.
+  - rewrite (Q.min_l q0 q2 (Qlt_le_weak q0 q2 H0)). apply Qeq_refl.
+Qed.
+
+Lemma Isupset_intersection_r : forall i0 i1, Isupset i0 i1 -> Iintersection i0 i1 == i1.
+Proof.
+  unfold Isupset. unfold Iintersection.
+  destruct i0. destruct i1. simpl.
+  intros. destruct H.
+  unfold Ieq. simpl. split.
+  - rewrite (Q.max_r q q1 (Qlt_le_weak q q1 H)). apply Qeq_refl.
+  - rewrite (Q.min_r q0 q2 (Qlt_le_weak q2 q0 H0)). apply Qeq_refl.
+Qed.
 
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
   ~IisEmpty (Iintersection i0 i1).
-  (*exists q : Q, contains q i0 /\ contains q i1.*)
+
+(* helper *)
+Lemma Qmin_ltl_comm : forall q q0 q1 : Q, Qmin q0 q1 < q <-> Qmin q1 q0 < q.
+Proof.
+  intros.
+  rewrite (Q.min_comm q1 q0).
+  split.
+  - intros. assumption.
+  - intros. assumption.
+Qed.
+
+(* helper *)
+Lemma Qmax_ltr_comm : forall q q0 q1 : Q, q < Qmax q0 q1 <-> q < Qmax q1 q0.
+Proof.
+  intros.
+  rewrite (Q.max_comm q1 q0).
+  split.
+  - intros. assumption.
+  - intros. assumption.
+Qed.
 
 Lemma Ioverlap_comm : forall i0 i1, Ioverlap i0 i1 <-> Ioverlap i1 i0.
 Proof.
-  unfold Ioverlap. unfold IisEmpty. (*unfold Iintersection.*)
-  intros. split.
-  - unfold not. intros.
+  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not. simpl. (*unfold Iintersection.*)
+  intros. destruct i0. destruct i1. simpl. split.
+  - intros.
+    rewrite (Qmin_ltl_comm (Qmax q1 q) q2 q0) in H0.
+    rewrite (Qmax_ltr_comm (Qmin q0 q2) q1 q) in H0.
     apply H.
-    apply H0.
-  unfold Ioverlap. .
-  split.
-  - intros. destruct H.
-    rewrite (and_comm (contains x i0) (contains x i1)) in H.
-    eexists x. assumption.
-  - intros. destruct H. 
-    rewrite (and_comm (contains x i1) (contains x i0)) in H.
-    eexists x. assumption.
+    assumption.
+  - intros.
+    rewrite (Qmin_ltl_comm (Qmax q q1) q0 q2) in H0.
+    rewrite (Qmax_ltr_comm (Qmin q2 q0) q q1) in H0.
+    apply H.
+    assumption.
 Qed.
 
 Lemma Ilt_not_overlap : forall i0 i1,
   Ilt i0 i1 -> ~Ioverlap i0 i1.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold contains. unfold not.
-  intros.
-  destruct H0. destruct H0. destruct H0. destruct H1. q_order.
+  unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  intros. destruct i0. destruct i1. simpl in H0. simpl in H.
+  destruct H0.
+  rewrite (Q.max_lt_iff q q1 (Qmin q0 q2)).
+  rewrite (Q.min_lt_iff q0 q2 q1).
+  right. left.
+  assumption.
 Qed.
 
 Lemma Igt_not_overlap : forall i0 i1,
@@ -177,10 +231,13 @@ Qed.
 
 Lemma Ioverlap_not_lt : forall i0 i1, Ioverlap i0 i1 -> ~Ilt i0 i1.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold contains. unfold not.
-  intros.
-  destruct H. destruct H. destruct H. destruct H1.
-  q_order.
+  unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  intros. destruct i0. destruct i1. simpl in H. simpl in H0.
+  destruct H.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
+  rewrite (Q.max_lt_iff q q1 q0).
+  left. right.
+  assumption.
 Qed.
 
 Lemma Ioverlap_not_gt : forall i0 i1, Ioverlap i0 i1 -> ~Igt i0 i1.
@@ -191,52 +248,73 @@ Proof.
   apply (Ioverlap_not_lt i1 i0).
 Qed.
 
-Lemma not_Ioverpal_lt_gt : forall i0 i1, ~Ioverlap i0 i1 -> Ilt i0 i1 \/ Igt i0 i1.
+(* helper *)
+Lemma DNE : forall A, ~~A <-> A.
 Proof.
-  unfold Ioverlap.
   intros.
+  destruct (excluded_middle_informative A).
+  split. 
+  - intros. assumption.
+  - intros.
+    unfold not. intros.
+    apply (H0 H).
+  - unfold not. split. 
+    intros. contradiction. intros. apply (H0 H).
+Qed.
 
-  destruct H.
-
-Lemma Ioverlap_not_lt_gt : forall i0 i1, ~Ioverlap i0 i1 <-> Ilt i0 i1 /\ Igt i0 i1 \/ Ilt i1 i0 /\ Igt i1 i0.
+(* use classical facts *)
+Lemma not_Ioverpal_lt_gt : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
 Proof.
-  unfold Ilt. unfold Igt. unfold Ioverlap.
-  intros.
+  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold Ilt. unfold Igt.
+  intros. destruct i0. destruct i1. simpl.
+  rewrite (DNE (Qmin q0 q2 < Qmax q q1)).
+  simpl in H. unfold not in H.  destruct H.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
+  rewrite (Q.max_lt_iff q q1 q0).
+  rewrite (Q.max_lt_iff q q1 q2).
   split.
   - intros.
-    destruct i0.
-    left.
-    split.
-    destruct H. destruct H.
-    destruct H. destruct H.
-    left. split.
-    destruct H.
+    destruct H1. destruct H1.
+    contradiction.
+    left. assumption.
+    destruct H1.
+    right. assumption.
+    contradiction.
+  - intros.
+    destruct H1.
+    left. right. assumption.
+    right. left. assumption.
+Qed.
 
-Lemma not_lt_gt_overlap : forall i0 i1, ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
+Lemma not_lt_gt_overlap : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
 Proof.
-  unfold Ilt. unfold Igt. unfold Ioverlap. unfold contains.
+  unfold Ilt. unfold Igt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not. simpl.
   intros.
-  destruct H.
-  apply (Qnot_lt_le (upper i0) (lower i1)) in H.
-  apply (Qnot_lt_le (upper i1) (lower i0)) in H0.
-  eexists.
-  split. split. 
-  eassumption.
-  eapply H0.
-  eassumption.
-  eapply H.
-
-  apply H0.
-  unfold lower.
+  destruct i0. destruct i1. simpl in H.  simpl in H0. simpl in H1.
+  destruct H. destruct H0.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)) in H1.
+  rewrite (Q.max_lt_iff q q1 q0) in H1.
+  rewrite (Q.max_lt_iff q q1 q2) in H1.
+  destruct H1. destruct H1.
+  contradiction.
+  contradiction.
+  destruct H1. contradiction. contradiction.
+Qed.
 
 Lemma Isubset_overlap :
   forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
 Proof.
-  unfold IisEmpty. unfold Isubset. unfold Ioverlap. unfold contains.
-  intros. destruct H. destruct H0.
-  eexists (lower i0). split.
-  - split. q_order. q_order.
-  - split. q_order. q_order.
+  unfold Ioverlap. unfold Isubset. unfold Iintersection. unfold IisEmpty. unfold not. simpl.
+  intros. destruct i0. destruct i1. simpl in H. simpl in H0. simpl in H1.
+  destruct H. destruct H0.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)) in H1.
+  rewrite (Q.max_lt_iff q q1 q0) in H1.
+  rewrite (Q.max_lt_iff q q1 q2) in H1.
+  destruct H1. destruct H1.
+  contradiction.
+  apply (H (Qlt_trans q0 q1 q H1 H0)). 
+  destruct H1. apply (H (Qlt_trans q0 q2 q H3 H1)).
+  contradiction.
 Qed.
 
 Lemma Isupset_overlap :
@@ -248,24 +326,6 @@ Proof.
   rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
   apply (Isubset_overlap i1 i0).
 Qed.
-
-
-(* TODO
-Lemma not_overlap_lgt_gt : forall i0 i1, ~Ioverlap i0 i1 -> Ilt i0 i1 \/ Igt i0 i1.
-Proof.
-   unfold Ioverlap. unfold contains. unfold Ilt. unfold Igt. intros.
-   rewrite not_ex_all_not.
-   left.
-   destruct H.
-  left.
-  apply (Ioverlap_not_lt i0 i1 H).
-  rewrite (Ioverlap_not_lt i0 i1) in H.
-*)
-
-(* TODO
-Lemma exclusive_Ilt_Ioverlap : forall i0 i1, Ilt i0 i1 <-> ~Ioverlap i0 i1.
-*)
-
 
 Definition BB : Type := Interval * Interval.
 
@@ -657,6 +717,7 @@ Lemma foo : B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) testEnv
 Proof.
   simpl. trivial.
 Qed.
+
 
 
 
