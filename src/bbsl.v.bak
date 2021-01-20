@@ -31,16 +31,16 @@ Definition IisNotEmpty (i : Interval) : Prop :=
 Definition Iin (v : Q) (i : Interval) : Prop :=
   (lower i <= v /\ v <= upper i)%Q.
 
-Lemma Iin_lower : forall i, ~IisEmpty i -> Iin (lower i) i.
+Lemma Iin_lower : forall i, IisNotEmpty i -> Iin (lower i) i.
 Proof.
-  intros. unfold Iin. unfold IisEmpty in H.
-  split. q_order. q_order.
+  unfold IisNotEmpty. unfold Iin.
+  intros. split. q_order. q_order.
 Qed.
 
-Lemma Iin_upper : forall i, ~IisEmpty i -> Iin (upper i) i.
+Lemma Iin_upper : forall i, IisNotEmpty i -> Iin (upper i) i.
 Proof.
-  intros. unfold Iin. unfold IisEmpty in H.
-  split. q_order. q_order.
+  unfold IisNotEmpty. unfold Iin.
+  intros. split. q_order. q_order.
 Qed.
 
 Definition width (i : Interval) : Q :=
@@ -53,7 +53,7 @@ Definition Igt (i0 i1 : Interval) : Prop :=
   upper i1 < lower i0.
 
 Definition Ieq (i0 i1 : Interval) : Prop :=
-  lower i0 == lower i1 /\ upper i0 == upper i1.
+  lower i0 = lower i1 /\ upper i0 = upper i1.
 
 Infix "==" := Ieq (at level 70, no associativity) : BBSL_scope.
 
@@ -103,7 +103,7 @@ Definition Iintersection (i0 i1 : Interval) : Interval :=
 Goal forall q q0 q1 : Q, ((Qmax q0 q1, q) == (Qmax q1 q0, q)).
 Proof.
   intros. unfold Ieq. simpl.
-  rewrite (Q.max_comm q1 q0).
+  rewrite (Q.max_comm q0 q1).
   split.
   apply Qeq_refl.
   apply Qeq_refl.
@@ -310,43 +310,16 @@ Proof.
   destruct H1. contradiction. contradiction.
 Qed.
 
-Lemma Qlt_asym : forall q0 q1 : Q, ~(q0 < q1 /\ q1 < q0).
-Proof.
-  unfold not. intros. destruct H.
-  q_order.
-Qed.
 
-Lemma Ilt_overlap_gt : forall i0 i1,
-  IisNotEmpty i0 /\ IisNotEmpty i1 ->
-    Ilt i0 i1 \/Ioverlap i0 i1 \/ Igt i0 i1.
+Lemma Ioverlap_lt_gt : forall i0 i1, Ioverlap i0 i1 \/ Ilt i0 i1 \/ Igt i0 i1.
 Proof.
-  unfold Ioverlap. unfold Ilt. unfold Igt. unfold IisEmpty. unfold IisNotEmpty. unfold Iintersection. unfold not. simpl.
+  unfold Ioverlap. unfold Ilt. unfold Igt. unfold IisEmpty. unfold Iintersection. unfold not. simpl.
   destruct i0 as (i0l, i0u). destruct i1 as (i1l, i1u). simpl.
   rewrite (Q.min_lt_iff i0u i1u (Qmax i0l i1l)).
   rewrite (Q.max_lt_iff i0l i1l i0u).
   rewrite (Q.max_lt_iff i0l i1l i1u).
-  intros. destruct H.
-  destruct (Qlt_le_dec i0u i1l).
-  - left. assumption.
-  - destruct (Qlt_le_dec i1u i0l).
-  -- right. right. assumption.
-  -- right. left. intros. destruct H1. destruct H1.
-  --- apply (Qle_lteq i0l i0u) in H. destruct H.
-  ---- apply (Qlt_asym i0l i0u (conj H H1)). 
-  ---- rewrite H in H1. apply (Qlt_irrefl i0u H1).
-  --- apply (Qle_lteq i1l i0u) in q. destruct q.
-  ---- apply (Qlt_asym i0u i1l (conj H1 H2)).
-  ---- rewrite H2 in H1. apply (Qlt_irrefl i0u H1).
-  --- destruct H1.
-  ---- apply (Qle_lteq i0l i1u) in q0. destruct q0.
-  ----- apply (Qlt_asym i0l i1u (conj H2 H1)).
-  ----- rewrite H2 in H1. apply (Qlt_irrefl i1u H1).
-  ---- apply (Qle_lteq i1l i1u) in H0. destruct H0.
-  ----- apply (Qlt_asym i1l i1u (conj H0 H1)).
-  ----- rewrite H0 in H1. apply (Qlt_irrefl i1u H1).
-Qed. 
+  case (Iltb (i0l, i0u) (i1l, i1u)).
 
-    
 Lemma Isubset_overlap :
   forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
 Proof.
@@ -970,27 +943,55 @@ Definition example_lead_vehicle_stopped : Spec :=
     ]
   ).
 
-Lemma or_falser : forall A : Prop, A \/ False <-> A.
+Lemma or_falsel : forall A : Prop, A \/ False <-> A.
 Proof.
   intros. split.
   - intros. destruct H. assumption. contradiction. 
   - intros. apply (or_introl H).
 Qed.
 
-Lemma or_falsel : forall A : Prop, False \/ A <-> A.
+Lemma or_falser : forall A : Prop, False \/ A <-> A.
 Proof.
   intros.
   rewrite (or_comm False A).
   revert A.
-  apply or_falser.
+  apply or_falsel.
 Qed.
 
-Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
+(*
+Lemma eq_truer : forall A : Prop, A = True <-> A.
 Proof.
   intros. split.
-  - intros. destruct H0. assumption.
-  - intros. apply (conj H0 H).
+  - intros. rewrite H. trivial. 
+  - intros.  apply (eq_intro  H).
+*)
+
+(*
+Goal forall n: Q, (n > 3 \/ n <= 3)%Q.
+Proof.
+  fix IH 1. intro n.
+  destruct n.
+  destruct Qnum.
+  - right. unfold Qle. simpl.
+*)
+
+Lemma Qlt_asym : forall q0 q1 : Q, ~(q0 < q1 /\ q1 < q0).
+Proof.
+  unfold not. intros. destruct H.
+  q_order.
 Qed.
+  
+Goal forall dec_xl dec_xu dec_yl dec_yu f_xl f_xu f_yl f_yu : Q,
+  f_xl <= f_xu /\ f_yl <= f_yu /\ dec_xl <= dec_xu /\ dec_yl <= dec_yu ->
+  dec_yu < f_yl \/ f_yu < dec_yl \/ Qmin f_yu dec_yu < Qmax f_yl dec_yl.
+Proof.
+  intros. destruct H. destruct H0. destruct H1.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
+  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
+  right. right. left. left.
+  rewrite (Qle_lteq f_yl f_yu) in H0.
+  destruct H0. apply (Qlt_asym )
 
 Proposition comprehensiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
@@ -999,40 +1000,92 @@ Proposition comprehensiveness_of_example_lead_vehicle_stopped :
         example_lead_vehicle_stopped
         (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
     in 
-    BBisNotEmpty front_bb /\ BBisNotEmpty dec /\ exists_front ->
-       match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
-       | Some b => b
-       | _ => False
-       end.
+    BBisNotEmpty front_bb /\ BBisNotEmpty dec ->
+       option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated = Some exists_front.
 Proof.
-  simpl. unfold BBisNotEmpty. unfold IisNotEmpty. unfold Igt. unfold Ilt.
-  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  simpl. unfold BBisNotEmpty. unfold IisNotEmpty. unfold Igt. unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection.
   intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
   destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
   destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
+  simpl. simpl in H. destruct H. destruct H. destruct H0.
+  f_equal.
   rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-  - left. left. right. apply (conj H2 q).
-  - destruct (Qlt_le_dec f_yu dec_yl).
-  -- left. right. apply (conj H2 q0).
-  -- right. split. assumption. intros. destruct H4. destruct H4.
-  --- apply (Qle_lteq f_yl f_yu) in H1. destruct H1.
-  ---- apply (Qlt_asym f_yl f_yu (conj H1 H4)).
-  ---- rewrite H1 in H4. apply (Qlt_irrefl f_yu H4).
-  --- apply (Qle_lteq dec_yl f_yu) in q0. destruct q0.
-  ---- apply (Qlt_asym dec_yl f_yu (conj H5 H4)).
-  ---- rewrite H5 in H4. apply (Qlt_irrefl f_yu H4).
-  --- destruct H4.
-  ---- apply (Qle_lteq f_yl dec_yu) in q. destruct q.
-  ----- apply (Qlt_asym f_yl dec_yu (conj H5 H4)).
-  ----- rewrite H5 in H4. apply (Qlt_irrefl dec_yu H4).
-  ---- apply (Qle_lteq dec_yl dec_yu) in H3. destruct H3.
-  ----- apply (Qlt_asym dec_yl dec_yu (conj H3 H4)).
-  ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
+
+  q_order.
+  case exists_front.
+  case_eq (q3 < q4).
+  f_equal.
+  rewrite (or_falser (exists_front \/ q2 < q5)).
+
+
+
+Goal forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+  let env :=
+    add "q" (Vq 0) (add "dec_i" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
+  in let defs :=
+    [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
+    ; DEF_B "前方車両がある" (EXP_Bvar "前方車両がある")
+    ]
+  in Cdefs defs env = Some (add "q" (Vq 0) (empty Value)).
+Proof.
+  simpl. trivial.
+
+Goal forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+  let env :=
+    add "減速区間" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value)))
+  in let defs := 
+    [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
+    ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
+    ]
+  in let case :=
+    ( "減速"
+    , defs
+    , (*EXP_Ioverlap
+        (EXP_projy (EXP_BBvar "前方車両"))
+        (EXP_projy (EXP_BBvar "減速区間"))*)
+        EXP_Qeq (EXP_Q 0) (EXP_Q 0)
+    )
+  (*in Ccase case env = Some ("減速", True).*)
+  in Cdefs defs env = Some env.
+Proof.
+  simpl.
+
+
+Goal B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) (add "q1" (Vq 1) (add "q0" (Vq 0) (empty Value))) = Some True.
+Proof.
+  simpl.
+
+Goal
+  forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+    let env := 
+      add "dec_i" (Vi dec_i) (add "front" (Vbb front_bb) (add "exists_front" (Vb exists_front) (empty Value)))
+    in let spec : Spec :=
+      (CND (EXP_Bvar "exists_front")
+      , [ ("減速"
+          , [ DEF_BB "front" (EXP_BBvar "front")
+            ; DEF_BB "dec_i" (EXP_BBvar "dec_i")
+            ]
+          , EXP_Qeq (EXP_Q 0) (EXP_Q 0)
+          )
+        ])
+    in Cspec spec env = Some [("減速", exists_front)].
+Proof.
+  simpl. intros.
+
+   trivial.
 Qed.
+
+Goal
+  forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+    let env := 
+      add "減速区間" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value)))
+    in option_map (fun lr =>
+    match lr with
+    | (l, r) => r
+    end
+    ) (Ccase ("減速", [], EXP_Qeq (EXP_Q 0) (EXP_Q 0)) env) = Some True.
+Proof.
+  simpl.
 
 Definition example_debris_static_in_lane : Spec :=
   ( CND (EXP_Bvar "静的障害物がある")
