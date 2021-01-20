@@ -25,6 +25,9 @@ Definition upper (i : Interval) : Q :=
 Definition IisEmpty (i : Interval) : Prop :=
   lower i > upper i.
 
+Definition IisNotEmpty (i : Interval) : Prop :=
+  lower i <= upper i.
+
 Definition Iin (v : Q) (i : Interval) : Prop :=
   (lower i <= v /\ v <= upper i)%Q.
 
@@ -45,6 +48,9 @@ Definition width (i : Interval) : Q :=
 
 Definition Ilt (i0 i1 : Interval) : Prop :=
   upper i0 < lower i1.
+
+(*Definition Iltb (i0 i1 : Innterval) : bool :=*)
+
 
 Definition Igt (i0 i1 : Interval) : Prop :=
   upper i1 < lower i0.
@@ -307,6 +313,16 @@ Proof.
   destruct H1. contradiction. contradiction.
 Qed.
 
+
+Lemma Ioverlap_lt_gt : forall i0 i1, Ioverlap i0 i1 \/ Ilt i0 i1 \/ Igt i0 i1.
+Proof.
+  unfold Ioverlap. unfold Ilt. unfold Igt. unfold IisEmpty. unfold Iintersection. unfold not. simpl.
+  destruct i0 as (i0l, i0u). destruct i1 as (i1l, i1u). simpl.
+  rewrite (Q.min_lt_iff i0u i1u (Qmax i0l i1l)).
+  rewrite (Q.max_lt_iff i0l i1l i0u).
+  rewrite (Q.max_lt_iff i0l i1l i1u).
+  case (Iltb (i0l, i0u) (i1l, i1u)).
+
 Lemma Isubset_overlap :
   forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
 Proof.
@@ -358,7 +374,10 @@ Definition projyu (bb : BB) : Q :=
   upper (projy bb).
 
 Definition BBisEmpty (bb : BB) : Prop :=
-  IisEmpty (projx bb) \/ IisEmpty (projy bb).
+  IisEmpty (projx bb) /\ IisEmpty (projy bb).
+
+Definition BBisNotEmpty (bb : BB) : Prop :=
+  IisNotEmpty (projx bb) /\ IisNotEmpty (projy bb).
 
 Definition BBeq (bb0 bb1 : BB) : Prop :=
   Ieq (projx bb0) (projx bb0) /\ Ieq (projy bb0) (projy bb1).
@@ -821,12 +840,12 @@ Definition Ccase (case : Case) (env : Env) : option (string * Prop) :=
     end
   end.
 
-Fixpoint _Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) : option (list (string * Prop)) :=
+Fixpoint Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) : option (list (string * Prop)) :=
   match cases with
   | nil => Some accum
   | cons case cases' =>
     match Ccase case env with
-    | Some lb => _Ccases cases' env (cons lb accum)
+    | Some lb => Ccases cases' env (cons lb accum)
     | _ => None
     end
   end.
@@ -834,7 +853,7 @@ Fixpoint _Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) 
 Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
   match spec with
   | (cond, cases) =>
-    match Ccond cond env, _Ccases cases env nil with
+    match Ccond cond env, Ccases cases env nil with
     | Some b, Some lbs => Some (List.map
           (fun lb => match lb with (l, b') => (l, b /\ b') end)
           lbs)
@@ -898,7 +917,7 @@ Definition example_confluence : Spec :=
     ]
   ).
 
-Definition exam_lead_vehicle_stopped : Spec :=
+Definition example_lead_vehicle_stopped : Spec :=
   ( CND (EXP_Bvar "前方車両がある")
   , [ ( "減速"
       , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
@@ -926,6 +945,150 @@ Definition exam_lead_vehicle_stopped : Spec :=
       )
     ]
   ).
+
+Lemma or_falsel : forall A : Prop, A \/ False <-> A.
+Proof.
+  intros. split.
+  - intros. destruct H. assumption. contradiction. 
+  - intros. apply (or_introl H).
+Qed.
+
+Lemma or_falser : forall A : Prop, False \/ A <-> A.
+Proof.
+  intros.
+  rewrite (or_comm False A).
+  revert A.
+  apply or_falsel.
+Qed.
+
+(*
+Lemma eq_truer : forall A : Prop, A = True <-> A.
+Proof.
+  intros. split.
+  - intros. rewrite H. trivial. 
+  - intros.  apply (eq_intro  H).
+*)
+
+(*
+Goal forall n: Q, (n > 3 \/ n <= 3)%Q.
+Proof.
+  fix IH 1. intro n.
+  destruct n.
+  destruct Qnum.
+  - right. unfold Qle. simpl.
+*)
+
+Lemma Qlt_asym : forall q0 q1 : Q, ~(q0 < q1 /\ q1 < q0).
+Proof.
+  unfold not. intros. destruct H.
+  q_order.
+Qed.
+  
+Goal forall dec_xl dec_xu dec_yl dec_yu f_xl f_xu f_yl f_yu : Q,
+  f_xl <= f_xu /\ f_yl <= f_yu /\ dec_xl <= dec_xu /\ dec_yl <= dec_yu ->
+  dec_yu < f_yl \/ f_yu < dec_yl \/ Qmin f_yu dec_yu < Qmax f_yl dec_yl.
+Proof.
+  intros. destruct H. destruct H0. destruct H1.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
+  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
+  right. right. left. left.
+  rewrite (Qle_lteq f_yl f_yu) in H0.
+  destruct H0. apply (Qlt_asym )
+
+Proposition comprehensiveness_of_example_lead_vehicle_stopped :
+  forall (exists_front : Prop) (front_bb dec : BB),
+    let evaluated := 
+      Cspec
+        example_lead_vehicle_stopped
+        (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
+    in 
+    BBisNotEmpty front_bb /\ BBisNotEmpty dec ->
+       option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated = Some exists_front.
+Proof.
+  simpl. unfold BBisNotEmpty. unfold IisNotEmpty. unfold Igt. unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection.
+  intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
+  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
+  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
+  simpl. simpl in H. destruct H. destruct H. destruct H0.
+  f_equal.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+
+  q_order.
+  case exists_front.
+  case_eq (q3 < q4).
+  f_equal.
+  rewrite (or_falser (exists_front \/ q2 < q5)).
+
+
+
+Goal forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+  let env :=
+    add "q" (Vq 0) (add "dec_i" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
+  in let defs :=
+    [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
+    ; DEF_B "前方車両がある" (EXP_Bvar "前方車両がある")
+    ]
+  in Cdefs defs env = Some (add "q" (Vq 0) (empty Value)).
+Proof.
+  simpl. trivial.
+
+Goal forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+  let env :=
+    add "減速区間" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value)))
+  in let defs := 
+    [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
+    ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
+    ]
+  in let case :=
+    ( "減速"
+    , defs
+    , (*EXP_Ioverlap
+        (EXP_projy (EXP_BBvar "前方車両"))
+        (EXP_projy (EXP_BBvar "減速区間"))*)
+        EXP_Qeq (EXP_Q 0) (EXP_Q 0)
+    )
+  (*in Ccase case env = Some ("減速", True).*)
+  in Cdefs defs env = Some env.
+Proof.
+  simpl.
+
+
+Goal B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) (add "q1" (Vq 1) (add "q0" (Vq 0) (empty Value))) = Some True.
+Proof.
+  simpl.
+
+Goal
+  forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+    let env := 
+      add "dec_i" (Vi dec_i) (add "front" (Vbb front_bb) (add "exists_front" (Vb exists_front) (empty Value)))
+    in let spec : Spec :=
+      (CND (EXP_Bvar "exists_front")
+      , [ ("減速"
+          , [ DEF_BB "front" (EXP_BBvar "front")
+            ; DEF_BB "dec_i" (EXP_BBvar "dec_i")
+            ]
+          , EXP_Qeq (EXP_Q 0) (EXP_Q 0)
+          )
+        ])
+    in Cspec spec env = Some [("減速", exists_front)].
+Proof.
+  simpl. intros.
+
+   trivial.
+Qed.
+
+Goal
+  forall (exists_front : Prop) (front_bb : BB) (dec_i : Interval),
+    let env := 
+      add "減速区間" (Vi dec_i) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value)))
+    in option_map (fun lr =>
+    match lr with
+    | (l, r) => r
+    end
+    ) (Ccase ("減速", [], EXP_Qeq (EXP_Q 0) (EXP_Q 0)) env) = Some True.
+Proof.
+  simpl.
 
 Definition example_debris_static_in_lane : Spec :=
   ( CND (EXP_Bvar "静的障害物がある")
