@@ -139,35 +139,6 @@ Qed.
 Definition Iintersection (i0 i1 : Interval) : Interval :=
   (Qmax (lower i0) (lower i1), Qmin (upper i0) (upper i1)).
 
-Goal forall q q0 q1 : Q, ((Qmax q0 q1, q) == (Qmax q1 q0, q)).
-Proof.
-  intros. unfold Ieq. simpl.
-  rewrite (Q.max_comm q1 q0).
-  split.
-  apply Qeq_refl.
-  apply Qeq_refl.
-Qed.
-
-Lemma Iintersection_comm : forall i0 i1, Iintersection i0 i1 == Iintersection i1 i0.
-Proof.
-  unfold Iintersection.
-  intros.
-  destruct i0. destruct i1.
-  simpl. unfold Ieq. simpl.
-  rewrite (Q.max_comm q1 q).
-  rewrite (Q.min_comm q2 q0).
-  split. apply Qeq_refl. apply Qeq_refl.
-Qed.
-
-Lemma Iempty_intersection : forall i0 i1, IisEmpty i0 -> IisEmpty (Iintersection i0 i1).
-Proof.
-  unfold IisEmpty. unfold Iintersection. simpl.
-  intros. destruct i0. destruct i1. simpl. simpl in H.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
-  rewrite (Q.max_lt_iff q q1 q0).
-  left. left. assumption.
-Qed.
-
 Definition Isubset (i0 i1 : Interval) := (lower i1 < lower i0)%Q /\ (upper i0 < upper i1)%Q.
 Definition Isubseteq (i0 i1 : Interval) := (lower i1 <= lower i0)%Q /\ (upper i0 <= upper i1)%Q.
 Notation Isupset a b := (Isubset b a) (only parsing).
@@ -237,6 +208,126 @@ Proof.
   - rewrite (Q.max_r q q1 (Qlt_le_weak q q1 H)). apply Qeq_refl.
   - rewrite (Q.min_r q0 q2 (Qlt_le_weak q2 q0 H0)). apply Qeq_refl.
 Qed.
+
+Definition Idot (i : Interval) := (lower i == upper i)%Q.
+
+Lemma Iintersection_if_divided1 : forall x y, x < y -> IisEmpty (Iintersection x y).
+Proof.
+  unfold Iintersection, IisEmpty. simpl. intros.
+  rewrite (Q.min_lt_iff (upper x) (upper y) (Qmax (lower x) (lower y))).
+  rewrite (Q.max_lt_iff (lower x) (lower y) (upper x)).
+  rewrite (Q.max_lt_iff (lower x) (lower y) (upper y)).
+  left. right. unfold Ilt in H. assumption.
+Qed.
+
+Lemma Iintersection_if_divided2 : forall x y, IisNotEmpty x /\ IisNotEmpty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
+Proof.
+  unfold Iintersection, Idot, IisNotEmpty. simpl. intros. destruct H.
+  apply Q.max_l in H. apply Q.min_l in H1.
+  rewrite <- H0. rewrite Q.max_comm. rewrite H.
+  rewrite H0. rewrite H1. apply Qeq_refl.
+Qed.
+
+Lemma Iintersection_if_divided3 : forall x y,
+  (lower y < upper x)%Q /\ (lower x <= lower y)%Q /\ (upper x <= upper y)%Q ->
+    IisNotEmpty (Iintersection x y).
+Proof.
+  unfold Iintersection, IisNotEmpty. simpl. intros.
+  destruct H. destruct H0.
+  rewrite (Q.max_lub_iff (lower x) (lower y)).
+  split.
+  - rewrite (Q.min_glb_iff (upper x) (upper y)). split.
+  -- apply Qle_lteq. left.
+     apply (Qle_lt_trans (lower x) (lower y) (upper x) H0 H).
+  -- apply Qle_lteq. left.
+     apply (Qlt_le_trans (lower x) (upper x) (upper y) (Qle_lt_trans (lower x) (lower y) (upper x) H0 H) H1).
+  - rewrite (Q.min_glb_iff (upper x) (upper y)). split.
+  -- apply Qle_lteq. left. assumption.
+  -- apply Qle_lteq. left.
+     apply (Qlt_le_trans (lower y) (upper x) (upper y) H H1).
+Qed.
+
+Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
+Proof.
+  intros. split.
+  - intros. apply Qeq_sym. assumption.
+  - intros. apply Qeq_sym. assumption.
+Qed.
+
+Lemma Iintersection_if_divided4 : forall x y, x == y -> x == Iintersection x y /\ y == Iintersection x y.
+Proof.
+  unfold Iintersection, Ieq. simpl. intros. destruct H.
+  rewrite (Qeq_sym_iff (lower x) (Qmax (lower x) (lower y))).
+  rewrite (Q.max_l_iff (lower x) (lower y)).
+  rewrite (Qeq_sym_iff (upper x) (Qmin (upper x) (upper y))).
+  rewrite (Q.min_l_iff (upper x) (upper y)).
+  rewrite (Qeq_sym_iff (lower y) (Qmax (lower x) (lower y))).
+  rewrite (Q.max_r_iff (lower x) (lower y)).
+  rewrite (Qeq_sym_iff (upper y) (Qmin (upper x) (upper y))).
+  rewrite (Q.min_r_iff (upper x) (upper y)).
+  split. split.
+  apply Qle_lteq. right. apply Qeq_sym. assumption.
+  apply Qle_lteq. right. assumption. 
+  split.
+  apply Qle_lteq. right. assumption.
+  apply Qle_lteq. right. apply Qeq_sym. assumption.
+Qed.
+
+Lemma Iintersection_if_divided5 : forall x y, Isubset x y -> Iintersection x y == x.
+Proof.
+  unfold Iintersection, Isubset, Ieq. simpl. intros. destruct H. split.
+  rewrite (Q.max_l_iff (lower x) (lower y)). rewrite Qle_lteq. left. assumption.
+  rewrite (Q.min_l_iff (upper x) (upper y)). rewrite Qle_lteq. left. assumption. 
+Qed.
+
+Lemma Iintersection_comm : forall i0 i1, Iintersection i0 i1 == Iintersection i1 i0.
+Proof.
+  unfold Iintersection.
+  intros.
+  destruct i0. destruct i1.
+  simpl. unfold Ieq. simpl.
+  rewrite (Q.max_comm q1 q).
+  rewrite (Q.min_comm q2 q0).
+  split. apply Qeq_refl. apply Qeq_refl.
+Qed.
+
+Lemma Iintersection_if_divided6 : forall x y, Isubset y x -> Iintersection y x == y.
+Proof.
+  intros x y.
+  apply (Iintersection_if_divided5 y x).
+Qed.
+
+Lemma Iintersection_if_divided7 : forall x y,
+  (lower x < upper y)%Q /\ (lower y <= lower x)%Q /\ (upper y <= upper x)%Q ->
+    IisNotEmpty (Iintersection y x).
+Proof.
+  intros x y.
+  apply (Iintersection_if_divided3 y x).
+Qed.
+
+Lemma Iintersection_if_divided8 : forall x y,
+  IisNotEmpty y /\ IisNotEmpty x ->
+  (upper y == lower x)%Q -> Idot (Iintersection y x).
+Proof.
+  intros x y.
+  apply (Iintersection_if_divided2 y x).
+Qed.
+
+Lemma Iintersection_if_divided9 : forall x y, y < x -> IisEmpty (Iintersection y x).
+Proof.
+  intros x y.
+  apply (Iintersection_if_divided1 y x).
+Qed.
+
+Lemma Iempty_intersection : forall i0 i1, IisEmpty i0 -> IisEmpty (Iintersection i0 i1).
+Proof.
+  unfold IisEmpty. unfold Iintersection. simpl.
+  intros. destruct i0. destruct i1. simpl. simpl in H.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
+  rewrite (Q.max_lt_iff q q1 q0).
+  left. left. assumption.
+Qed.
+
 
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
   ~IisEmpty (Iintersection i0 i1).
@@ -524,6 +615,36 @@ Qed.
 
 Definition BBintersection (bb0 bb1 : BB) : BB :=
   (Iintersection (projx bb0) (projx bb1), Iintersection (projy bb0) (projy bb1)).
+
+Lemma BBsubseteq_intersection : forall p q,
+  BBsubseteq (BBintersection p q) p /\ BBsubseteq (BBintersection p q) q.
+Proof.
+  unfold BBsubseteq, BBintersection. destruct p as (px, py). destruct q as (qx, qy).
+  simpl.
+  apply and_assoc.
+  rewrite (and_comm (Isubseteq (Iintersection py qy) py) (Isubseteq (Iintersection px qx) qx /\ Isubseteq (Iintersection py qy) qy)).
+  rewrite (and_assoc (Isubseteq (Iintersection px qx) qx) (Isubseteq (Iintersection py qy) qy) (Isubseteq (Iintersection py qy) py)).
+  rewrite <- (and_assoc (Isubseteq (Iintersection px qx) px) (Isubseteq (Iintersection px qx) qx) (Isubseteq (Iintersection py qy) qy /\ Isubseteq (Iintersection py qy) py)).
+  split.
+  apply (Isubseteq_intersection px qx).
+  apply and_comm.
+  apply (Isubseteq_intersection py qy).
+Qed.
+
+Lemma BBsubset_irrefl : forall x, BBisNotEmpty x -> ~BBsubset x x.
+Proof.
+  unfold BBsubset, BBisNotEmpty, not. intros. destruct H, H0.
+  apply (Isubset_irrefl (projx x) H H0).
+Qed.
+
+Lemma BBsubset_trans : forall x y z, BBsubset x y /\ BBsubset y z -> BBsubset x z.
+Proof.
+  unfold BBsubset. intros. destruct H. destruct H, H0. split.
+  apply (Isubset_trans (projx x) (projx y) (projx z) (conj H H0)).
+  apply (Isubset_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+Qed.
+
+
 
 Definition BBarea (bb : BB) : Q :=
   width (projx bb) * width (projy bb).
