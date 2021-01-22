@@ -46,16 +46,24 @@ Qed.
 Definition width (i : Interval) : Q :=
   Qmax 0 (upper i - lower i).
 
-Definition Ilt (i0 i1 : Interval) : Prop :=
-  upper i0 < lower i1.
-
-Definition Igt (i0 i1 : Interval) : Prop :=
-  upper i1 < lower i0.
-
-Definition Ieq (i0 i1 : Interval) : Prop :=
-  lower i0 == lower i1 /\ upper i0 == upper i1.
+Definition Ieq (i0 i1 : Interval) := lower i0 == lower i1 /\ upper i0 == upper i1.
+Definition Ilt (i0 i1 : Interval) := upper i0 < lower i1.
+Definition Ile (i0 i1 : Interval) := upper i0 <= lower i1.
+Notation Igt a b := (Ilt b a) (only parsing).
+Notation Ige a b := (Ile b a) (only parsing).
 
 Infix "==" := Ieq (at level 70, no associativity) : BBSL_scope.
+Infix "<" := Ilt : BBSL_scope.
+Infix "<=" := Ile : BBSL_scope.
+Notation "x > y" := (Ilt y x)(only parsing) : BBSL_scope.
+Notation "x >= y" := (Ile y x)(only parsing) : BBSL_scope.
+Notation "x <= y <= z" := (x<=y/\y<=z) : BBSL_scope.
+
+Lemma Ieq_refl : forall x, x == x.
+Proof.
+  unfold Ieq. intros.
+  split. apply Qeq_refl. apply Qeq_refl.
+Qed.
 
 Lemma Ilt_gt_dual : forall i0 i1, Ilt i0 i1 <-> Igt i1 i0.
 Proof.
@@ -63,6 +71,27 @@ Proof.
   unfold Ilt. unfold Igt. unfold iff.
   split. trivial. trivial.
 Qed.
+
+Lemma Ieq_sym : forall x y, x == y -> y == x.
+Proof.
+  unfold Ieq. intros. destruct H. split.
+  apply (Qeq_sym (lower x) (lower y) H).
+  apply (Qeq_sym (upper x) (upper y) H0).
+Qed.
+
+Lemma Ieq_sym_iff : forall x y, x == y <-> y == x.
+Proof.
+  intros. split.
+  apply Ieq_sym. apply Ieq_sym.
+Qed.
+
+Lemma Ieq_trans : forall x y z, x == y /\ y == z -> x == z.
+Proof.
+  unfold Ieq. intros. destruct H. destruct H, H0. split.
+  apply (Qeq_trans (lower x) (lower y) (lower z) H H0).
+  apply (Qeq_trans (upper x) (upper y) (upper z) H1 H2).
+Qed.
+
 
 Lemma Ilt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> ~Ilt i1 i0.
 Proof.
@@ -74,7 +103,6 @@ Qed.
 Lemma Igt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Igt i0 i1 -> ~Igt i1 i0.
 Proof.
   intros i0 i1.
-  rewrite <- (Ilt_gt_dual i1 i0).
   rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
   apply (Ilt_antisymm i1 i0).
 Qed.
@@ -83,7 +111,6 @@ Lemma Ilt_not_gt : forall i0 i1,
   ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> ~Igt i0 i1.
 Proof.
   intros i0 i1.
-  rewrite <- (Ilt_gt_dual i1 i0).
   apply (Ilt_antisymm i0 i1).
 Qed.
 
@@ -91,8 +118,6 @@ Lemma Igt_not_lt : forall i0 i1,
   ~IisEmpty i0 /\ ~IisEmpty i1 -> Igt i0 i1 -> ~Ilt i0 i1.
 Proof.
   intros i0 i1.
-  rewrite (Ilt_gt_dual i0 i1).
-  rewrite <- (Ilt_gt_dual i1 i0).
   rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
   apply (Ilt_not_gt i1 i0).
 Qed.
@@ -130,10 +155,10 @@ Proof.
 Qed.
 
 Definition Isubset (i0 i1 : Interval) : Prop :=
-  lower i1 < lower i0 /\ upper i0 < upper i1.
+  (lower i1 < lower i0)%Q /\ (upper i0 < upper i1)%Q.
 
 Definition Isupset (i0 i1 : Interval) : Prop :=
-  lower i0 < lower i1 /\ upper i1 < upper i0.
+  (lower i0 < lower i1)%Q /\ (upper i1 < upper i0)%Q.
 
 Lemma Isubset_supset_dual : forall i0 i1, Isubset i0 i1 <-> Isupset i1 i0.
 Proof.
@@ -182,7 +207,7 @@ Definition Ioverlap (i0 i1 : Interval) : Prop :=
   ~IisEmpty (Iintersection i0 i1).
 
 (* helper *)
-Lemma Qmin_ltl_comm : forall q q0 q1 : Q, Qmin q0 q1 < q <-> Qmin q1 q0 < q.
+Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
 Proof.
   intros.
   rewrite (Q.min_comm q1 q0).
@@ -192,7 +217,7 @@ Proof.
 Qed.
 
 (* helper *)
-Lemma Qmax_ltr_comm : forall q q0 q1 : Q, q < Qmax q0 q1 <-> q < Qmax q1 q0.
+Lemma Qmax_ltr_comm : forall q q0 q1 : Q, (q < Qmax q0 q1)%Q <-> (q < Qmax q1 q0)%Q.
 Proof.
   intros.
   rewrite (Q.max_comm q1 q0).
@@ -233,7 +258,6 @@ Lemma Igt_not_overlap : forall i0 i1,
   Igt i0 i1 -> ~Ioverlap i0 i1.
 Proof.
   intros i0 i1.
-  rewrite <- (Ilt_gt_dual i1 i0).
   rewrite (Ioverlap_comm i0 i1).
   apply (Ilt_not_overlap i1 i0).
 Qed.
@@ -252,7 +276,6 @@ Qed.
 Lemma Ioverlap_not_gt : forall i0 i1, Ioverlap i0 i1 -> ~Igt i0 i1.
 Proof.
   intros i0 i1.
-  rewrite <- (Ilt_gt_dual i1 i0).
   rewrite (Ioverlap_comm i0 i1).
   apply (Ioverlap_not_lt i1 i0).
 Qed.
@@ -276,7 +299,7 @@ Lemma not_Ioverpal_lt_gt : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> ~Ioverl
 Proof.
   unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold Ilt. unfold Igt.
   intros. destruct i0. destruct i1. simpl.
-  rewrite (DNE (Qmin q0 q2 < Qmax q q1)).
+  rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
   simpl in H. unfold not in H.  destruct H.
   rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
   rewrite (Q.max_lt_iff q q1 q0).
@@ -310,7 +333,7 @@ Proof.
   destruct H1. contradiction. contradiction.
 Qed.
 
-Lemma Qlt_asym : forall q0 q1 : Q, ~(q0 < q1 /\ q1 < q0).
+Lemma Qlt_asym : forall q0 q1 : Q, ~((q0 < q1)%Q /\ (q1 < q0)%Q).
 Proof.
   unfold not. intros. destruct H.
   q_order.
@@ -404,7 +427,35 @@ Definition BBisNotEmpty (bb : BB) : Prop :=
   IisNotEmpty (projx bb) /\ IisNotEmpty (projy bb).
 
 Definition BBeq (bb0 bb1 : BB) : Prop :=
-  Ieq (projx bb0) (projx bb0) /\ Ieq (projy bb0) (projy bb1).
+  Ieq (projx bb0) (projx bb1) /\ Ieq (projy bb0) (projy bb1).
+
+Infix "==" := BBeq (at level 70, no associativity) : BBSL_scope.
+
+Lemma BBeq_refl : forall x, x == x.
+Proof.
+  unfold BBeq. intros. split.
+  apply Ieq_refl. apply Ieq_refl.
+Qed.
+
+Lemma BBeq_sym : forall x y, x == y -> y == x.
+Proof.
+  unfold BBeq. intros. destruct H. split.
+  apply (Ieq_sym (projx x) (projx y) H).
+  apply (Ieq_sym (projy x) (projy y) H0).
+Qed.
+
+Lemma BBeq_sym_iff : forall x y, x == y <-> y == x.
+Proof.
+  intros. split.
+  apply BBeq_sym. apply BBeq_sym.
+Qed.
+
+Lemma BBeq_trans : forall x y z, x == y /\ y == z -> x == z.
+Proof.
+  unfold BBeq. intros. destruct H. destruct H, H0. split.
+  apply (Ieq_trans (projx x) (projx y) (projx z) (conj H H0)).
+  apply (Ieq_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+Qed.
 
 Definition BBoverlap (bb0 bb1 : BB) : Prop :=
   Ioverlap (projx bb0) (projx bb1) /\ Ioverlap (projy bb0) (projy bb1).
@@ -890,7 +941,7 @@ Definition testEnv := add "q1" (Vq 1) (add "q0" (Vq 0) (empty Value)).
 
 Lemma foo : B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) testEnv
   = match Aq (EXP_Qvar "q0") testEnv, Aq (EXP_Qvar "q1") testEnv with
-    | Some q0, Some q1 => Some (q0 < q1)
+    | Some q0, Some q1 => Some (q0 < q1)%Q
     | _, _ => None
   end.
 Proof.
