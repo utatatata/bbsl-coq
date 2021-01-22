@@ -220,7 +220,8 @@ Proof.
   left. right. unfold Ilt in H. assumption.
 Qed.
 
-Lemma Iintersection_if_divided2 : forall x y, IisNotEmpty x /\ IisNotEmpty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
+Lemma Iintersection_if_divided2 : forall x y,
+  IisNotEmpty x /\ IisNotEmpty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
 Proof.
   unfold Iintersection, Idot, IisNotEmpty. simpl. intros. destruct H.
   apply Q.max_l in H. apply Q.min_l in H1.
@@ -254,7 +255,8 @@ Proof.
   - intros. apply Qeq_sym. assumption.
 Qed.
 
-Lemma Iintersection_if_divided4 : forall x y, x == y -> x == Iintersection x y /\ y == Iintersection x y.
+Lemma Iintersection_if_divided4 : forall x y,
+  x == y -> x == Iintersection x y /\ y == Iintersection x y.
 Proof.
   unfold Iintersection, Ieq. simpl. intros. destruct H.
   rewrite (Qeq_sym_iff (lower x) (Qmax (lower x) (lower y))).
@@ -327,7 +329,6 @@ Proof.
   rewrite (Q.max_lt_iff q q1 q0).
   left. left. assumption.
 Qed.
-
 
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
   ~IisEmpty (Iintersection i0 i1).
