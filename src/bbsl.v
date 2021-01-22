@@ -44,7 +44,7 @@ Proof.
 Qed.
 
 Definition width (i : Interval) : Q :=
-  upper i - lower i.
+  Qmax 0 (upper i - lower i).
 
 Definition Ilt (i0 i1 : Interval) : Prop :=
   upper i0 < lower i1.
@@ -425,7 +425,7 @@ Definition BBintersection (bb0 bb1 : BB) : BB :=
   (Iintersection (projx bb0) (projx bb1), Iintersection (projy bb0) (projy bb1)).
 
 Definition BBarea (bb : BB) : Q :=
-  Qmax 0 (width (projx bb) * width (projy bb)).
+  width (projx bb) * width (projy bb).
 
 Definition SetBB : Type := list BB.
 
@@ -443,6 +443,7 @@ Fixpoint _SBBintersection (sbb0 sbb1 accum : SetBB) : SetBB :=
   | nil => accum
   | cons bb sbb => _SBBintersection sbb sbb1 (_BB_SBBintersection bb sbb1 nil ++ accum)
   end.
+
 
 Definition SBBintersection (sbb0 sbb1 : SetBB) : SetBB :=
   _SBBintersection sbb0 sbb1 nil.
