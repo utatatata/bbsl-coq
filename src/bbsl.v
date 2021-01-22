@@ -65,13 +65,6 @@ Proof.
   split. apply Qeq_refl. apply Qeq_refl.
 Qed.
 
-Lemma Ilt_gt_dual : forall i0 i1, Ilt i0 i1 <-> Igt i1 i0.
-Proof.
-  intros.
-  unfold Ilt. unfold Igt. unfold iff.
-  split. trivial. trivial.
-Qed.
-
 Lemma Ieq_sym : forall x y, x == y -> y == x.
 Proof.
   unfold Ieq. intros. destruct H. split.
@@ -91,7 +84,6 @@ Proof.
   apply (Qeq_trans (lower x) (lower y) (lower z) H H0).
   apply (Qeq_trans (upper x) (upper y) (upper z) H1 H2).
 Qed.
-
 
 Lemma Ilt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> ~Ilt i1 i0.
 Proof.
@@ -120,6 +112,28 @@ Proof.
   intros i0 i1.
   rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
   apply (Ilt_not_gt i1 i0).
+Qed.
+
+Lemma Ile_trans : forall x y z, IisNotEmpty y -> x <= y /\ y <= z -> x <= z.
+Proof.
+  unfold Ile, IisNotEmpty.
+  destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
+  simpl. intros. destruct H0.
+  apply (Qle_trans xu yu zl (Qle_trans xu yl yu H0 H) H1).
+Qed.
+
+Lemma Ilt_trans : forall x y z, IisNotEmpty y -> x < y /\ y < z -> x < z.
+Proof.
+  unfold Ilt, IisNotEmpty.
+  destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
+  simpl. intros. destruct H0.
+  apply (Qlt_trans xu yu zl (Qlt_le_trans xu yl yu H0 H) H1).
+Qed.
+
+Lemma Ilt_irrefl : forall x, IisNotEmpty x -> ~x < x.
+Proof.
+  unfold Ilt, IisNotEmpty. intros.
+  apply (Qle_not_lt (lower x) (upper x) H).
 Qed.
 
 Definition Iintersection (i0 i1 : Interval) : Interval :=
@@ -154,34 +168,55 @@ Proof.
   left. left. assumption.
 Qed.
 
-Definition Isubset (i0 i1 : Interval) : Prop :=
-  (lower i1 < lower i0)%Q /\ (upper i0 < upper i1)%Q.
+Definition Isubset (i0 i1 : Interval) := (lower i1 < lower i0)%Q /\ (upper i0 < upper i1)%Q.
+Definition Isubseteq (i0 i1 : Interval) := (lower i1 <= lower i0)%Q /\ (upper i0 <= upper i1)%Q.
+Notation Isupset a b := (Isubset b a) (only parsing).
+Notation Isupseteq a b := (Isubseteq b a) (only parsing).
 
-Definition Isupset (i0 i1 : Interval) : Prop :=
-  (lower i0 < lower i1)%Q /\ (upper i1 < upper i0)%Q.
-
-Lemma Isubset_supset_dual : forall i0 i1, Isubset i0 i1 <-> Isupset i1 i0.
+Lemma Isubseteq_refl : forall x, Isubseteq x x.
 Proof.
-  intros.
-  unfold Isubset. unfold Isupset. unfold iff.
-  split. trivial. trivial.
+  unfold Isubseteq. intros. split.
+  apply Qle_refl. apply Qle_refl.
+Qed.
+
+Lemma Isubseteq_antisym : forall x y, Isubseteq x y /\ Isubseteq y x -> x == y.
+Proof.
+  unfold Isubseteq, Ieq. intros. destruct H. destruct H, H0. split.
+  apply (Qle_antisym (lower x) (lower y) H0 H).
+  apply (Qle_antisym (upper x) (upper y) H1 H2).
+Qed.
+
+Lemma Isubseteq_trans : forall x y z, Isubseteq x y /\ Isubseteq y z -> Isubseteq x z.
+Proof.
+  unfold Isubseteq. intros. destruct H. destruct H, H0. split.
+  apply (Qle_trans (lower z) (lower y) (lower x) H0 H).
+  apply (Qle_trans (upper x) (upper y) (upper z) H1 H2).
+Qed.
+
+Lemma Isubseteq_intersection : forall x y,
+  Isubseteq (Iintersection x y) x /\ Isubseteq (Iintersection x y) y.
+Proof.
+  unfold Iintersection, Isubseteq. simpl. intros. split.
+  - split.
+  -- rewrite (Q.max_le_iff (lower x) (lower y) (lower x)). left. apply Qle_refl.
+  -- rewrite (Q.min_le_iff (upper x) (upper y) (upper x)). left. apply Qle_refl.
+  - split.
+  -- apply (Q.max_le_iff (lower x) (lower y) (lower y)). right. apply Qle_refl.
+  -- apply (Q.min_le_iff (upper x) (upper y) (upper y)). right. apply Qle_refl.
+Qed.
+
+Lemma Isubset_irrefl : forall x, IisNotEmpty x -> ~Isubset x x.
+Proof.
+  unfold Isubset, IisNotEmpty, not. intros. destruct H0.
+  apply (Qlt_irrefl (lower x) H0).
 Qed.
 
 Lemma Isubset_trans : forall i0 i1 i2, Isubset i0 i1 /\ Isubset i1 i2 -> Isubset i0 i2.
 Proof.
-  unfold Isubset.
-  intros.
-  simpl. simpl in H. destruct H. destruct H. destruct H0.
-  split.
-  - apply (Qlt_trans (lower i2) (lower i1) (lower i0) H0 H).
-  - apply (Qlt_trans (upper i0) (upper i1) (upper i2) H1 H2). 
+  unfold Isubset. intros. destruct H. destruct H, H0. split.
+  apply (Qlt_trans (lower i2) (lower i1) (lower i0) H0 H).
+  apply (Qlt_trans (upper i0) (upper i1) (upper i2) H1 H2). 
 Qed.
-
-Definition Isubseteq (i0 i1 : Interval) : Prop :=
-  Isubset i0 i1 \/ i0 == i1.
-
-Definition Isupseteq (i0 i1 : Interval) : Prop :=
-  Isupset i0 i1 \/ i0 == i1.
 
 Lemma Isubset_intersection_l : forall i0 i1, Isubset i0 i1 -> Iintersection i0 i1 == i0.
 Proof.
@@ -390,7 +425,6 @@ Lemma Isupset_overlap :
   forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isupset i0 i1 -> Ioverlap i0 i1.
 Proof.
   intros i0 i1.
-  rewrite <- (Isubset_supset_dual i1 i0).
   rewrite (Ioverlap_comm i0 i1).
   rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
   apply (Isubset_overlap i1 i0).
@@ -460,17 +494,33 @@ Qed.
 Definition BBoverlap (bb0 bb1 : BB) : Prop :=
   Ioverlap (projx bb0) (projx bb1) /\ Ioverlap (projy bb0) (projy bb1).
 
-Definition BBsubset (bb0 bb1 : BB) : Prop :=
-  Isubset (projx bb0) (projx bb0) /\ Isubset (projy bb0) (projy bb0).
+Definition BBsubset (bb0 bb1 : BB) :=
+  Isubset (projx bb0) (projx bb1) /\ Isubset (projy bb0) (projy bb1).
+Definition BBsubseteq (bb0 bb1 : BB) :=
+  Isubseteq (projx bb0) (projx bb1) /\ Isubseteq (projy bb0) (projy bb1).
+Notation BBsupset a b := (BBsubset b a) (only parsing).
+Notation BBsupseteq a b := (BBsubseteq b a) (only parsing).
 
-Definition BBsupset (bb0 bb1 : BB) : Prop :=
-  Isupset (projx bb0) (projx bb0) /\ Isupset (projy bb0) (projy bb0).
+Lemma BBsubseteq_refl : forall x, BBsubseteq x x.
+Proof.
+  unfold BBsubseteq. intros. split.
+  apply Isubseteq_refl. apply Isubseteq_refl.
+Qed.
 
-Definition BBsubseteq (bb0 bb1 : BB) : Prop :=
-  Isubseteq (projx bb0) (projx bb0) /\ Isubseteq (projy bb0) (projy bb0).
+Lemma BBsubseteq_antisym : forall a b, BBsubseteq a b /\ BBsubseteq b a -> a == b.
+Proof.
+  unfold BBsubseteq. destruct a as (ax, ay). destruct b as (bx, _by). unfold BBeq.
+  simpl. intros. destruct H. destruct H, H0. split.
+  apply (Isubseteq_antisym ax bx (conj H H0)).
+  apply (Isubseteq_antisym ay _by (conj H1 H2)).
+Qed.
 
-Definition BBsupseteq (bb0 bb1 : BB) : Prop :=
-  Isupseteq (projx bb0) (projx bb0) /\ Isupseteq (projy bb0) (projy bb0).
+Lemma BBsubseteq_trans : forall x y z, BBsubseteq x y /\ BBsubseteq y z -> BBsubseteq x z.
+Proof.
+  unfold BBsubseteq, BBisNotEmpty. intros. destruct H. destruct H, H0. split.
+  apply (Isubseteq_trans (projx x) (projx y) (projx z) (conj H H0)).
+  apply (Isubseteq_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+Qed.
 
 Definition BBintersection (bb0 bb1 : BB) : BB :=
   (Iintersection (projx bb0) (projx bb1), Iintersection (projy bb0) (projy bb1)).
@@ -494,7 +544,6 @@ Fixpoint _SBBintersection (sbb0 sbb1 accum : SetBB) : SetBB :=
   | nil => accum
   | cons bb sbb => _SBBintersection sbb sbb1 (_BB_SBBintersection bb sbb1 nil ++ accum)
   end.
-
 
 Definition SBBintersection (sbb0 sbb1 : SetBB) : SetBB :=
   _SBBintersection sbb0 sbb1 nil.
