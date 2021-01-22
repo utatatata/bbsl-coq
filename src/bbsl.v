@@ -1087,6 +1087,13 @@ Definition Ccase (case : Case) (env : Env) : option (string * Prop) :=
     end
   end.
 
+Lemma toTrue : forall P : Prop, P -> P <-> True.
+Proof.
+  intros. split.
+  intros. trivial.
+  intros. apply H.
+Qed.
+
 Fixpoint Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) : option (list (string * Prop)) :=
   match cases with
   | nil => Some accum
@@ -1256,6 +1263,29 @@ Proof.
   ----- apply (Qlt_asym dec_yl dec_yu (conj H3 H4)).
   ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
 Qed.
+
+(*
+Proposition exclusiveness_of_example_lead_vehicle_stopped :
+  forall (exists_front : Prop) (front_bb dec : BB),
+    let evaluated := 
+      Ccases
+        (snd example_lead_vehicle_stopped)
+        (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
+    in let case_dec := option_map (fun ev => snd (List.find (fun lb => (fst lb) == "減速"))) evaluated
+    (*
+    in let case_dec := option_map (fun ev => snd (find (fun lb => (fst lb) == "減速"))) evaluated
+    in let case_stop := snd (find (fun lb => (fst lb) == "停止") evaluated)
+    in let case_none := snd (find (fun lb => (fst lb) == "レスポンスなし") evaluated)
+    *)
+    in True.
+    match case_dec, case_stop, case_none with
+    | Some True, Some False, Some False => True
+    | Some False, Some True, Some False => True
+    | Some False, Some False, Some True => True
+    | _, _, _ => False
+    end.
+*)
+
 
 Definition example_debris_static_in_lane : Spec :=
   ( CND (EXP_Bvar "静的障害物がある")
