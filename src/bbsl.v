@@ -1,4 +1,4 @@
-Require Import ClassicalDescription QArith QOrderedType Qminmax GenericMinMax String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
+Require Import ClassicalDescription QArith OrdersFacts QOrderedType Qminmax GenericMinMax String Bool List FMapList OrderedTypeEx Ensembles Bool Ltac2.Option.
 Import ListNotations.
 
 Declare Scope BBSL_scope.
@@ -12,39 +12,107 @@ Local Open Scope BBSL_scope.
 
 Definition Interval : Type := Q * Q.
 
-Definition lower (i : Interval) : Q :=
-  match i with
-  | (l, _) => l
-  end.
+Definition lower : Q * Q -> Q := fst.
+Definition upper : Q * Q -> Q := snd.
+Definition Iin (v : Q) (i : Interval) := lower i <= v <= upper i.
+Definition Inin (v : Q) (i : Interval) := v < lower i \/ upper i < v.
+Definition Iempty (i : Interval) := lower i > upper i.
+Definition Inempty (i :Interval) := lower i <= upper i.
 
-Definition upper (i : Interval) : Q :=
-  match i with
-  | (_, u) => u
-  end.
-
-Definition IisEmpty (i : Interval) : Prop :=
-  lower i > upper i.
-
-Definition IisNotEmpty (i : Interval) : Prop :=
-  lower i <= upper i.
-
-Definition Iin (v : Q) (i : Interval) : Prop :=
-  (lower i <= v /\ v <= upper i)%Q.
-
-Lemma Iin_lower : forall i, ~IisEmpty i -> Iin (lower i) i.
+Lemma Iempty_not_nempty : forall i, Iempty i -> ~Inempty i.
 Proof.
-  intros. unfold Iin. unfold IisEmpty in H.
-  split. q_order. q_order.
+  unfold Iempty, Inempty. intros i H.
+  now apply Qlt_not_le.
 Qed.
 
-Lemma Iin_upper : forall i, ~IisEmpty i -> Iin (upper i) i.
+Lemma Inempty_not_empty : forall i, Inempty i -> ~Iempty i.
 Proof.
-  intros. unfold Iin. unfold IisEmpty in H.
-  split. q_order. q_order.
+  unfold Inempty, Iempty. intros i H.
+  now apply Qle_not_lt.
 Qed.
 
-Definition width (i : Interval) : Q :=
-  Qmax 0 (upper i - lower i).
+Lemma Inot_empty_nempty : forall i, ~Iempty i -> Inempty i.
+Proof.
+  unfold Iempty, Inempty. intros i H.
+  now apply Qnot_lt_le.
+Qed.
+
+Lemma Inot_nempty_empty : forall i, ~Inempty i -> Iempty i.
+Proof.
+  unfold Iempty, Inempty. intros i H.
+  now apply Qnot_le_lt.
+Qed.
+
+Lemma Iempty_not_nempty_iff : forall i, Iempty i <-> ~Inempty i.
+Proof.
+  intros i. split.
+  apply Iempty_not_nempty. apply Inot_nempty_empty.
+Qed.
+
+Lemma Inot_empty_nempty_iff : forall i, ~Iempty i <-> Inempty i.
+Proof.
+  intros i. split.
+  apply Inot_empty_nempty. apply Inempty_not_empty.
+Qed.
+
+Lemma Iempty_nempty_dec : forall i, {Iempty i} + {Inempty i}.
+Proof.
+  unfold Iempty, Inempty. intros i.
+  apply Qlt_le_dec.
+Qed.
+
+Lemma Inempty_empty_dec : forall i, {Inempty i} + {Iempty i}.
+Proof.
+  intros i.
+  elim (Iempty_nempty_dec i).
+  * now right.
+  * now left.
+Qed.
+
+Lemma Iin_not_nin : forall v i, Iin v i -> ~Inin v i.
+Proof.
+  unfold Iin, Inin, not. intros v i H H0. destruct H as (H & H1). destruct H0 as [H0 | H0].
+  apply (Qle_not_lt (lower i) v H H0). apply (Qle_not_lt v (upper i) H1 H0).
+Qed.
+
+Lemma Inin_not_in : forall v i, Inin v i -> ~Iin v i.
+Proof.
+  unfold Inin, Iin, not. intros v i H H0. destruct H0 as (H0 & H1). destruct H as [H | H].
+  apply (Qle_not_lt (lower i) v H0 H). apply (Qle_not_lt v (upper i) H1 H).
+Qed.
+
+Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
+Proof.
+  intros x y. split.
+  apply Qlt_not_le. apply Qnot_le_lt.
+Qed.
+
+Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
+Proof.
+  intros x y. split.
+  apply Qle_not_lt. apply Qnot_lt_le.
+Qed.
+
+Lemma norn_nand : forall A B, ~A \/ ~B -> ~(A /\ B).
+Proof.
+  unfold not. intros A B H. destruct H.
+  intro HAandB. destruct HAandB as (HA & HB). contradiction.
+  intro HAandB. destruct HAandB as (HA & HB). apply (H HB).
+Qed.
+
+Lemma Iin_lower : forall i, Inempty i -> Iin (lower i) i.
+Proof.
+  unfold Inempty, Iin. intros i H. split.
+  apply Qle_refl. assumption.
+Qed.
+
+Lemma Iin_upper : forall i, Inempty i -> Iin (upper i) i.
+Proof.
+  unfold Inempty, Iin. intros i H. split.
+  assumption. apply Qle_refl.
+Qed.
+
+Definition width (i : Interval) := Qmax 0 (upper i - lower i).
 
 Definition Ieq (i0 i1 : Interval) := lower i0 == lower i1 /\ upper i0 == upper i1.
 Definition Ilt (i0 i1 : Interval) := upper i0 < lower i1.
@@ -85,54 +153,54 @@ Proof.
   apply (Qeq_trans (upper x) (upper y) (upper z) H1 H2).
 Qed.
 
-Lemma Ilt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> ~Ilt i1 i0.
+Lemma Ilt_antisymm : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Ilt i0 i1 -> ~Ilt i1 i0.
 Proof.
   unfold Ilt. intros.
-  unfold IisEmpty in H. destruct H.
+  unfold Iempty in H. destruct H.
   q_order.
 Qed.
 
-Lemma Igt_antisymm : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Igt i0 i1 -> ~Igt i1 i0.
+Lemma Igt_antisymm : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Igt i0 i1 -> ~Igt i1 i0.
 Proof.
   intros i0 i1.
-  rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
+  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
   apply (Ilt_antisymm i1 i0).
 Qed.
 
 Lemma Ilt_not_gt : forall i0 i1,
-  ~IisEmpty i0 /\ ~IisEmpty i1 -> Ilt i0 i1 -> ~Igt i0 i1.
+  ~Iempty i0 /\ ~Iempty i1 -> Ilt i0 i1 -> ~Igt i0 i1.
 Proof.
   intros i0 i1.
   apply (Ilt_antisymm i0 i1).
 Qed.
 
 Lemma Igt_not_lt : forall i0 i1,
-  ~IisEmpty i0 /\ ~IisEmpty i1 -> Igt i0 i1 -> ~Ilt i0 i1.
+  ~Iempty i0 /\ ~Iempty i1 -> Igt i0 i1 -> ~Ilt i0 i1.
 Proof.
   intros i0 i1.
-  rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
+  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
   apply (Ilt_not_gt i1 i0).
 Qed.
 
-Lemma Ile_trans : forall x y z, IisNotEmpty y -> x <= y /\ y <= z -> x <= z.
+Lemma Ile_trans : forall x y z, Inempty y -> x <= y /\ y <= z -> x <= z.
 Proof.
-  unfold Ile, IisNotEmpty.
+  unfold Ile, Inempty.
   destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
   simpl. intros. destruct H0.
   apply (Qle_trans xu yu zl (Qle_trans xu yl yu H0 H) H1).
 Qed.
 
-Lemma Ilt_trans : forall x y z, IisNotEmpty y -> x < y /\ y < z -> x < z.
+Lemma Ilt_trans : forall x y z, Inempty y -> x < y /\ y < z -> x < z.
 Proof.
-  unfold Ilt, IisNotEmpty.
+  unfold Ilt, Inempty.
   destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
   simpl. intros. destruct H0.
   apply (Qlt_trans xu yu zl (Qlt_le_trans xu yl yu H0 H) H1).
 Qed.
 
-Lemma Ilt_irrefl : forall x, IisNotEmpty x -> ~x < x.
+Lemma Ilt_irrefl : forall x, Inempty x -> ~x < x.
 Proof.
-  unfold Ilt, IisNotEmpty. intros.
+  unfold Ilt, Inempty. intros.
   apply (Qle_not_lt (lower x) (upper x) H).
 Qed.
 
@@ -176,9 +244,9 @@ Proof.
   -- apply (Q.min_le_iff (upper x) (upper y) (upper y)). right. apply Qle_refl.
 Qed.
 
-Lemma Isubset_irrefl : forall x, IisNotEmpty x -> ~Isubset x x.
+Lemma Isubset_irrefl : forall x, Inempty x -> ~Isubset x x.
 Proof.
-  unfold Isubset, IisNotEmpty, not. intros. destruct H0.
+  unfold Isubset, Inempty, not. intros. destruct H0.
   apply (Qlt_irrefl (lower x) H0).
 Qed.
 
@@ -211,9 +279,9 @@ Qed.
 
 Definition Idot (i : Interval) := (lower i == upper i)%Q.
 
-Lemma Iintersection_if_divided1 : forall x y, x < y -> IisEmpty (Iintersection x y).
+Lemma Iintersection_if_divided1 : forall x y, x < y -> Iempty (Iintersection x y).
 Proof.
-  unfold Iintersection, IisEmpty. simpl. intros.
+  unfold Iintersection, Iempty. simpl. intros.
   rewrite (Q.min_lt_iff (upper x) (upper y) (Qmax (lower x) (lower y))).
   rewrite (Q.max_lt_iff (lower x) (lower y) (upper x)).
   rewrite (Q.max_lt_iff (lower x) (lower y) (upper y)).
@@ -221,9 +289,9 @@ Proof.
 Qed.
 
 Lemma Iintersection_if_divided2 : forall x y,
-  IisNotEmpty x /\ IisNotEmpty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
+  Inempty x /\ Inempty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
 Proof.
-  unfold Iintersection, Idot, IisNotEmpty. simpl. intros. destruct H.
+  unfold Iintersection, Idot, Inempty. simpl. intros. destruct H.
   apply Q.max_l in H. apply Q.min_l in H1.
   rewrite <- H0. rewrite Q.max_comm. rewrite H.
   rewrite H0. rewrite H1. apply Qeq_refl.
@@ -231,9 +299,9 @@ Qed.
 
 Lemma Iintersection_if_divided3 : forall x y,
   (lower y < upper x)%Q /\ (lower x <= lower y)%Q /\ (upper x <= upper y)%Q ->
-    IisNotEmpty (Iintersection x y).
+    Inempty (Iintersection x y).
 Proof.
-  unfold Iintersection, IisNotEmpty. simpl. intros.
+  unfold Iintersection, Inempty. simpl. intros.
   destruct H. destruct H0.
   rewrite (Q.max_lub_iff (lower x) (lower y)).
   split.
@@ -301,29 +369,29 @@ Qed.
 
 Lemma Iintersection_if_divided7 : forall x y,
   (lower x < upper y)%Q /\ (lower y <= lower x)%Q /\ (upper y <= upper x)%Q ->
-    IisNotEmpty (Iintersection y x).
+    Inempty (Iintersection y x).
 Proof.
   intros x y.
   apply (Iintersection_if_divided3 y x).
 Qed.
 
 Lemma Iintersection_if_divided8 : forall x y,
-  IisNotEmpty y /\ IisNotEmpty x ->
+  Inempty y /\ Inempty x ->
   (upper y == lower x)%Q -> Idot (Iintersection y x).
 Proof.
   intros x y.
   apply (Iintersection_if_divided2 y x).
 Qed.
 
-Lemma Iintersection_if_divided9 : forall x y, y < x -> IisEmpty (Iintersection y x).
+Lemma Iintersection_if_divided9 : forall x y, y < x -> Iempty (Iintersection y x).
 Proof.
   intros x y.
   apply (Iintersection_if_divided1 y x).
 Qed.
 
-Lemma Iempty_intersection : forall i0 i1, IisEmpty i0 -> IisEmpty (Iintersection i0 i1).
+Lemma Iempty_intersection : forall i0 i1, Iempty i0 -> Iempty (Iintersection i0 i1).
 Proof.
-  unfold IisEmpty. unfold Iintersection. simpl.
+  unfold Iempty. unfold Iintersection. simpl.
   intros. destruct i0. destruct i1. simpl. simpl in H.
   rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
   rewrite (Q.max_lt_iff q q1 q0).
@@ -331,7 +399,7 @@ Proof.
 Qed.
 
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
-  ~IisEmpty (Iintersection i0 i1).
+  ~Iempty (Iintersection i0 i1).
 
 (* helper *)
 Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
@@ -355,7 +423,7 @@ Qed.
 
 Lemma Ioverlap_comm : forall i0 i1, Ioverlap i0 i1 <-> Ioverlap i1 i0.
 Proof.
-  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not. simpl.
+  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not. simpl.
   intros. destruct i0. destruct i1. simpl. split.
   - intros.
     rewrite (Qmin_ltl_comm (Qmax q1 q) q2 q0) in H0.
@@ -372,7 +440,7 @@ Qed.
 Lemma Ilt_not_overlap : forall i0 i1,
   Ilt i0 i1 -> ~Ioverlap i0 i1.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  unfold Ilt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
   intros. destruct i0. destruct i1. simpl in H0. simpl in H.
   destruct H0.
   rewrite (Q.max_lt_iff q q1 (Qmin q0 q2)).
@@ -391,7 +459,7 @@ Qed.
 
 Lemma Ioverlap_not_lt : forall i0 i1, Ioverlap i0 i1 -> ~Ilt i0 i1.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  unfold Ilt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
   intros. destruct i0. destruct i1. simpl in H. simpl in H0.
   destruct H.
   rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
@@ -422,9 +490,9 @@ Proof.
 Qed.
 
 (* use classical facts *)
-Lemma not_Ioverpal_lt_gt : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
+Lemma not_Ioverpal_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
 Proof.
-  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold Ilt. unfold Igt.
+  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold Ilt. unfold Igt.
   intros. destruct i0. destruct i1. simpl.
   rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
   simpl in H. unfold not in H.  destruct H.
@@ -445,9 +513,9 @@ Proof.
     right. left. assumption.
 Qed.
 
-Lemma not_lt_gt_overlap : forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
+Lemma not_lt_gt_overlap : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
 Proof.
-  unfold Ilt. unfold Igt. unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not. simpl.
+  unfold Ilt. unfold Igt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not. simpl.
   intros.
   destruct i0. destruct i1. simpl in H.  simpl in H0. simpl in H1.
   destruct H. destruct H0.
@@ -467,10 +535,10 @@ Proof.
 Qed.
 
 Lemma Ilt_overlap_gt : forall i0 i1,
-  IisNotEmpty i0 /\ IisNotEmpty i1 ->
+  Inempty i0 /\ Inempty i1 ->
     Ilt i0 i1 \/Ioverlap i0 i1 \/ Igt i0 i1.
 Proof.
-  unfold Ioverlap. unfold Ilt. unfold Igt. unfold IisEmpty. unfold IisNotEmpty. unfold Iintersection. unfold not. simpl.
+  unfold Ioverlap. unfold Ilt. unfold Igt. unfold Iempty. unfold Inempty. unfold Iintersection. unfold not. simpl.
   destruct i0 as (i0l, i0u). destruct i1 as (i1l, i1u). simpl.
   rewrite (Q.min_lt_iff i0u i1u (Qmax i0l i1l)).
   rewrite (Q.max_lt_iff i0l i1l i0u).
@@ -498,9 +566,9 @@ Qed.
 
     
 Lemma Isubset_overlap :
-  forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
+  forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
 Proof.
-  unfold Ioverlap. unfold Isubset. unfold Iintersection. unfold IisEmpty. unfold not. simpl.
+  unfold Ioverlap. unfold Isubset. unfold Iintersection. unfold Iempty. unfold not. simpl.
   intros. destruct i0. destruct i1. simpl in H. simpl in H0. simpl in H1.
   destruct H. destruct H0.
   rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)) in H1.
@@ -514,11 +582,11 @@ Proof.
 Qed.
 
 Lemma Isupset_overlap :
-  forall i0 i1, ~IisEmpty i0 /\ ~IisEmpty i1 -> Isupset i0 i1 -> Ioverlap i0 i1.
+  forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Isupset i0 i1 -> Ioverlap i0 i1.
 Proof.
   intros i0 i1.
   rewrite (Ioverlap_comm i0 i1).
-  rewrite (and_comm (~IisEmpty i0) (~IisEmpty i1)).
+  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
   apply (Isubset_overlap i1 i0).
 Qed.
 
@@ -546,11 +614,11 @@ Definition projyl (bb : BB) : Q :=
 Definition projyu (bb : BB) : Q :=
   upper (projy bb).
 
-Definition BBisEmpty (bb : BB) : Prop :=
-  IisEmpty (projx bb) /\ IisEmpty (projy bb).
+Definition BBempty (bb : BB) : Prop :=
+  Iempty (projx bb) /\ Iempty (projy bb).
 
-Definition BBisNotEmpty (bb : BB) : Prop :=
-  IisNotEmpty (projx bb) /\ IisNotEmpty (projy bb).
+Definition BBnempty (bb : BB) : Prop :=
+  Inempty (projx bb) /\ Inempty (projy bb).
 
 Definition BBeq (bb0 bb1 : BB) : Prop :=
   Ieq (projx bb0) (projx bb1) /\ Ieq (projy bb0) (projy bb1).
@@ -609,7 +677,7 @@ Qed.
 
 Lemma BBsubseteq_trans : forall x y z, BBsubseteq x y /\ BBsubseteq y z -> BBsubseteq x z.
 Proof.
-  unfold BBsubseteq, BBisNotEmpty. intros. destruct H. destruct H, H0. split.
+  unfold BBsubseteq, BBnempty. intros. destruct H. destruct H, H0. split.
   apply (Isubseteq_trans (projx x) (projx y) (projx z) (conj H H0)).
   apply (Isubseteq_trans (projy x) (projy y) (projy z) (conj H1 H2)).
 Qed.
@@ -632,9 +700,9 @@ Proof.
   apply (Isubseteq_intersection py qy).
 Qed.
 
-Lemma BBsubset_irrefl : forall x, BBisNotEmpty x -> ~BBsubset x x.
+Lemma BBsubset_irrefl : forall x, BBnempty x -> ~BBsubset x x.
 Proof.
-  unfold BBsubset, BBisNotEmpty, not. intros. destruct H, H0.
+  unfold BBsubset, BBnempty, not. intros. destruct H, H0.
   apply (Isubset_irrefl (projx x) H H0).
 Qed.
 
@@ -652,7 +720,7 @@ Definition BBarea (bb : BB) : Q :=
 
 Definition SetBB : Type := list BB.
 
-(*Lemma foo : forall sbb, (exist bb, In bb sbb /\ isEmpty bb) -> isEmpty sbb. *) 
+(*Lemma foo : forall sbb, (exist bb, In bb sbb /\ empty bb) -> empty sbb. *) 
 
 (* TODO: filter empty BB for efficiency *)
 Fixpoint _BB_SBBintersection (bb : BB) (sbb accum : SetBB) : SetBB :=
@@ -1229,14 +1297,14 @@ Proposition comprehensiveness_of_example_lead_vehicle_stopped :
         example_lead_vehicle_stopped
         (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
     in 
-    BBisNotEmpty front_bb /\ BBisNotEmpty dec /\ exists_front ->
+    BBnempty front_bb /\ BBnempty dec /\ exists_front ->
        match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
        | Some b => b
        | _ => False
        end.
 Proof.
-  simpl. unfold BBisNotEmpty. unfold IisNotEmpty. unfold Igt. unfold Ilt.
-  unfold Ioverlap. unfold IisEmpty. unfold Iintersection. unfold not.
+  simpl. unfold BBnempty. unfold Inempty. unfold Igt. unfold Ilt.
+  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
   intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
   destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
   destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
