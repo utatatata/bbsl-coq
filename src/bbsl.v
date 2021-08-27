@@ -1087,12 +1087,14 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
     end
   | EXP_forall bound sbb_expr b_expr =>
     match Asbb sbb_expr env with
-    | Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr env) sbb) (Some True)
+    (*| Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr env) sbb) (Some True)*)
+    | Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some True)
     | _ => None
     end
   | EXP_exists bound sbb_expr b_expr =>
     match Asbb sbb_expr env with
-    | Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr env) sbb) (Some False)
+    (*| Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr env) sbb) (Some False)*)
+    | Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some False)
     | _ => None
     end
   end.
@@ -1194,6 +1196,89 @@ Proof.
   simpl. trivial.
 Qed.
 
+Lemma or_falser : forall A : Prop, A \/ False <-> A.
+Proof.
+  intros. split.
+  - intros. destruct H. assumption. contradiction. 
+  - intros. apply (or_introl H).
+Qed.
+
+Lemma or_falsel : forall A : Prop, False \/ A <-> A.
+Proof.
+  intros.
+  rewrite (or_comm False A).
+  revert A.
+  apply or_falser.
+Qed.
+
+Lemma or_truel : forall A : Prop, True \/ A <-> True.
+Proof.
+  intros. split.
+  - intros. destruct H. trivial. trivial.
+  - intros. apply (or_introl H).
+Qed. 
+
+Lemma or_truer : forall A : Prop, A \/ True <-> True.
+Proof.
+  intros.
+  rewrite (or_comm A True).
+  revert A.
+  apply or_truel.
+Qed.
+
+Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
+Proof.
+  intros. split.
+  - intros. destruct H0. assumption.
+  - intros. apply (conj H0 H).
+Qed.
+
+Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
+Proof.
+  intros. split.
+  intros. trivial. intros. apply (or_introl H).
+Qed.
+
+Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
+Proof.
+  intros. rewrite (or_comm A B0).
+  revert H. revert B0 A. apply or_l.
+Qed.
+
+(*
+Proposition aaa :
+  forall (confluent_region : Interval) (set_of_cars : SetBB),
+    let env :=
+      (add "合流領域" (Vi confluent_region) (add "他車集合" (Vsbb set_of_cars) (empty Value)))
+    in
+    let evaluated1 :=
+      B
+        (EXP_forall
+          "x"
+          (EXP_SBBvar "他車集合")
+          (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "x")) (EXP_Ivar "合流領域"))))
+        env
+    in
+    let evaluated := 
+      Ccase
+        ( "シーン１"
+        , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
+          ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
+          ]
+        , EXP_forall "x" (EXP_SBBvar "他車集合")
+            (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "x")) (EXP_Ivar "合流領域")))
+        ) 
+        env
+    in 
+    Inempty confluent_region ->
+       match evaluated1 with
+       | Some b => True
+       | _ => False
+       end.
+Proof.
+  simpl.
+*)
+
 Definition example_confluence : Spec := 
   ( CND_None
   , [ ( "シーン１"
@@ -1209,7 +1294,7 @@ Definition example_confluence : Spec :=
         ]
       , EXP_exists "x" (EXP_SBBvar "他車集合")
           (EXP_and
-            (EXP_Qeq (EXP_projyl (EXP_BBvar "y")) (EXP_proju (EXP_Ivar "合流領域")))
+            (EXP_Qeq (EXP_projyl (EXP_BBvar "x")) (EXP_proju (EXP_Ivar "合流領域")))
             (EXP_forall "y" (EXP_SBBvar "他車集合")
               (EXP_or (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "y")) (EXP_Ivar "合流領域")))
                       (EXP_BBeq (EXP_BBvar "x") (EXP_BBvar "y")))))
@@ -1239,6 +1324,61 @@ Definition example_confluence : Spec :=
     ]
   ).
 
+(*
+Proposition comprehensiveness_of_example_confluence :
+  forall (confluent_region : Interval) (set_of_cars : SetBB),
+    let evaluated := 
+      Cspec
+        example_confluence
+        (add "合流領域" (Vi confluent_region) (add "他車集合" (Vsbb set_of_cars) (empty Value)))
+    in 
+    Inempty confluent_region ->
+       match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
+       | Some b => b
+       | _ => False
+       end.
+Proof.
+  intros confluent_region set_of_cars. destruct confluent_region as (region_l, region_u).
+  destruct set_of_cars as [|car].
+  -- simpl. rewrite (and_l True True).
+     rewrite (or_truer (((False \/ True /\ False) \/ True /\ False) \/ True /\ False)).
+     trivial.
+     trivial.
+  -- destruct car as (car_x, car_y).
+     destruct car_x as (car_xl, car_xu).
+     destruct car_y as (car_yl, car_yu).
+     simpl. unfold Inempty. unfold Ieq. unfold Isubseteq.
+
+     destruct (Qlt_le_dec )
+
+  destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
+  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
+  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
+  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
+  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
+  destruct (Qlt_le_dec dec_yu f_yl).
+  - left. left. right. apply (conj H2 q).
+  - destruct (Qlt_le_dec f_yu dec_yl).
+  -- left. right. apply (conj H2 q0).
+  -- right. split. assumption. intros. destruct H4. destruct H4.
+  --- apply (Qle_lteq f_yl f_yu) in H1. destruct H1.
+  ---- apply (Qlt_asym f_yl f_yu (conj H1 H4)).
+  ---- rewrite H1 in H4. apply (Qlt_irrefl f_yu H4).
+  --- apply (Qle_lteq dec_yl f_yu) in q0. destruct q0.
+  ---- apply (Qlt_asym dec_yl f_yu (conj H5 H4)).
+  ---- rewrite H5 in H4. apply (Qlt_irrefl f_yu H4).
+  --- destruct H4.
+  ---- apply (Qle_lteq f_yl dec_yu) in q. destruct q.
+  ----- apply (Qlt_asym f_yl dec_yu (conj H5 H4)).
+  ----- rewrite H5 in H4. apply (Qlt_irrefl dec_yu H4).
+  ---- apply (Qle_lteq dec_yl dec_yu) in H3. destruct H3.
+  ----- apply (Qlt_asym dec_yl dec_yu (conj H3 H4)).
+  ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
+Qed.
+*)
+
 Definition example_lead_vehicle_stopped : Spec :=
   ( CND (EXP_Bvar "前方車両がある")
   , [ ( "減速"
@@ -1267,28 +1407,6 @@ Definition example_lead_vehicle_stopped : Spec :=
       )
     ]
   ).
-
-Lemma or_falser : forall A : Prop, A \/ False <-> A.
-Proof.
-  intros. split.
-  - intros. destruct H. assumption. contradiction. 
-  - intros. apply (or_introl H).
-Qed.
-
-Lemma or_falsel : forall A : Prop, False \/ A <-> A.
-Proof.
-  intros.
-  rewrite (or_comm False A).
-  revert A.
-  apply or_falser.
-Qed.
-
-Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
-Proof.
-  intros. split.
-  - intros. destruct H0. assumption.
-  - intros. apply (conj H0 H).
-Qed.
 
 Proposition comprehensiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
@@ -1332,27 +1450,57 @@ Proof.
   ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
 Qed.
 
-(*
 Proposition exclusiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
     let evaluated := 
-      Ccases
-        (snd example_lead_vehicle_stopped)
+      Cspec
+        example_lead_vehicle_stopped
         (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
-    in let case_dec := option_map (fun ev => snd (List.find (fun lb => (fst lb) == "減速"))) evaluated
-    (*
-    in let case_dec := option_map (fun ev => snd (find (fun lb => (fst lb) == "減速"))) evaluated
-    in let case_stop := snd (find (fun lb => (fst lb) == "停止") evaluated)
-    in let case_none := snd (find (fun lb => (fst lb) == "レスポンスなし") evaluated)
-    *)
-    in True.
-    match case_dec, case_stop, case_none with
-    | Some True, Some False, Some False => True
-    | Some False, Some True, Some False => True
-    | Some False, Some False, Some True => True
-    | _, _, _ => False
-    end.
-*)
+    in 
+    BBnempty front_bb /\ BBnempty dec /\ exists_front ->
+       match option_map (fun cases => List.fold_left and (List.map (fun case =>
+           ~snd case \/ List.fold_left and (List.map (fun case' => ~snd case' \/ fst case = fst case') cases) True
+
+         ) cases) True) evaluated with
+       | Some b => b
+       | _ => False
+       end.
+Proof.
+  simpl. unfold BBnempty. unfold Ioverlap. unfold Iintersection.
+  unfold Iempty. unfold Inempty. unfold not. unfold Ilt.
+  intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
+  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
+  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
+  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
+  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
+  destruct (Qlt_le_dec dec_yu f_yl).
+  split. split. split. trivial. right. split. split. split. trivial. right. trivial.
+  left. intros. destruct H4. apply (Qle_lt_trans dec_yl dec_yu f_yl H3) in q.
+  -- destruct (Qlt_le_dec f_yu dec_yl).
+     apply (Qle_lt_trans f_yl f_yu dec_yl H1) in q0. apply (Qlt_asym dec_yl f_yl (conj q q0)).
+     apply (Qlt_le_trans dec_yl f_yl f_yu q) in H1. apply (Qlt_asym dec_yl f_yu (conj H1 H5)).
+  -- left. intros. destruct H4. destruct H5. right. left. assumption.
+  -- left. intros. destruct H4. apply (Qlt_le_trans dec_yu f_yl f_yu q) in H1.
+     apply (Qle_lt_trans dec_yl dec_yu f_yu H3) in H1. apply (Qlt_asym dec_yl f_yu (conj H1 H5)).
+  -- left. intros. destruct H4. destruct H5. right. left. assumption.
+  -- destruct (Qlt_le_dec f_yu dec_yl).
+     split. split. split. trivial. left. intros. destruct H4.
+     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
+     right. split. split. split. trivial. left. intros. destruct H4.
+     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
+     right. trivial. left. intros. destruct H4. destruct H5. left. right. assumption.
+     left. intros. destruct H4. destruct H5. left. right. assumption.
+     split. split. split. trivial. left. intros. destruct H4.
+     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
+     left. intros. destruct H4. apply (Qle_lt_trans dec_yl f_yu dec_yl q0) in H5.
+     apply (Qlt_irrefl dec_yl) in H5. assumption.
+     right. split. split. split. trivial. left. intros. destruct H4.
+     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
+     left. intros. destruct H4. apply (Qle_lt_trans dec_yl f_yu dec_yl q0) in H5. apply (Qlt_irrefl dec_yl). assumption.
+     right. trivial.
+Qed.
 
 
 Definition example_debris_static_in_lane : Spec :=
@@ -1398,6 +1546,31 @@ Definition example_debris_static_in_lane : Spec :=
       )
     ]
   ).
+
+(**
+Proposition comprehensiveness_of_example_debris_static_in_lane :
+  forall (exists_debris : Prop) (debrises : SetBB) (lane_bbs : SetBB) (dec : BB),
+    let evaluated :=
+      Cspec
+        example_debris_static_in_lane
+        (add "減速区間" (Vbb dec) (add "進行区間集合" (Vsbb lane_bbs) (add "障害物集合" (Vsbb debrises) (add "静的障害物がある" (Vb exists_debris) (empty Value)))))
+    in
+    BBnempty dec /\ exists_debris ->
+      match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
+      | Some b => b
+      | _ => False
+      end.
+Proof.
+  simpl. unfold BBnempty. unfold Inempty. unfold Igt. unfold Ilt.
+  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
+  intros. destruct dec as (dec_x, dec_y). 
+  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
+  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
+  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
+  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
+  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
+  destruct (Qlt_le_dec dec_yu f_yl).
+*)
 
 Definition example_vehicle_cutting_in : Spec :=
   ( CND (EXP_and (EXP_Bvar "前方車両がある") (EXP_Bvar "他車両がある"))
