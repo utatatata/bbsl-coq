@@ -4,15 +4,39 @@ Import ListNotations.
 Declare Scope BBSL_scope.
 
 Local Open Scope bool_scope.
-Local Open Scope Q_scope.
 Local Open Scope string_scope.
+Local Open Scope Q_scope.
 Local Open Scope list_scope.
 
 Local Open Scope BBSL_scope.
 
 
-
 (******************** Helpers ********************)
+
+Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
+Proof.
+  intros. split.
+  - intros. apply Qeq_sym. assumption.
+  - intros. apply Qeq_sym. assumption.
+Qed.
+
+Lemma Qgt_ge_trans : forall x y z, x > y -> y >= z -> x > z.
+Proof.
+  intros x y z H H0.
+  apply (Qle_lt_trans z y x H0 H).
+Qed.
+
+Lemma Qge_gt_trans : forall x y z, x >= y -> y > z -> x > z.
+Proof.
+  intros x y z H H0.
+  apply (Qlt_le_trans z y x H0 H).
+Qed.
+
+Lemma Qlt_asym : forall q0 q1 : Q, ~((q0 < q1)%Q /\ (q1 < q0)%Q).
+Proof.
+  unfold not. intros. destruct H.
+  q_order.
+Qed.
 
 Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
 Proof.
@@ -30,6 +54,18 @@ Proof.
   split.
   - intros. assumption.
   - intros. assumption.
+Qed.
+
+Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
+Proof.
+  intros x y. split.
+  apply Qlt_not_le. apply Qnot_le_lt.
+Qed.
+
+Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
+Proof.
+  intros x y. split.
+  apply Qle_not_lt. apply Qnot_lt_le.
 Qed.
 
 (*
@@ -72,21 +108,18 @@ Proof.
 Qed.
 *)
 
-(* helper *)
 Definition option_and (a b : option Prop) : option Prop :=
     match a, b with
     | Some a, Some b => Some (a /\ b)
     | _, _ => None
     end.
 
-(* helper *)
 Definition option_or (a b : option Prop) : option Prop :=
     match a, b with
     | Some a, Some b => Some (a \/ b)
     | _, _ => None
     end.
 
-(* helper *)
 Lemma toTrue : forall P : Prop, P -> P <-> True.
 Proof.
   intros. split.
@@ -94,7 +127,13 @@ Proof.
   intros. apply H.
 Qed.
 
-(* helper *)
+Lemma norn_nand : forall A B, ~A \/ ~B -> ~(A /\ B).
+Proof.
+  unfold not. intros A B H. destruct H.
+  intro HAandB. destruct HAandB as (HA & HB). contradiction.
+  intro HAandB. destruct HAandB as (HA & HB). apply (H HB).
+Qed.
+
 Lemma or_falser : forall A : Prop, A \/ False <-> A.
 Proof.
   intros. split.
@@ -102,7 +141,6 @@ Proof.
   - intros. apply (or_introl H).
 Qed.
 
-(* helper *)
 Lemma or_falsel : forall A : Prop, False \/ A <-> A.
 Proof.
   intros.
@@ -111,7 +149,6 @@ Proof.
   apply or_falser.
 Qed.
 
-(* helper *)
 Lemma or_truel : forall A : Prop, True \/ A <-> True.
 Proof.
   intros. split.
@@ -119,7 +156,6 @@ Proof.
   - intros. apply (or_introl H).
 Qed. 
 
-(* helper *)
 Lemma or_truer : forall A : Prop, A \/ True <-> True.
 Proof.
   intros.
@@ -128,7 +164,21 @@ Proof.
   apply or_truel.
 Qed.
 
-(* helper *)
+Lemma and_truel : forall A : Prop, True /\ A <-> A.
+Proof.
+  intros. split.
+  - intros. destruct H. trivial.
+  - intros. split. trivial. trivial.
+Qed.
+
+Lemma and_truer : forall A : Prop, A /\ True <-> A.
+Proof.
+  intros.
+  rewrite (and_comm A True).
+  revert A.
+  apply and_truel.
+Qed.
+
 Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
 Proof.
   intros. split.
@@ -136,7 +186,6 @@ Proof.
   - intros. apply (conj H0 H).
 Qed.
 
-(* helper *)
 Lemma and_r : forall A B : Prop, A -> (A /\ B <-> B).
 Proof.
   intros.
@@ -145,14 +194,12 @@ Proof.
   apply and_l.
 Qed.
 
-(* helper *)
 Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
 Proof.
   intros. split.
   intros. trivial. intros. apply (or_introl H).
 Qed.
 
-(* helper *)
 Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
 Proof.
   intros. rewrite (or_comm A B).
@@ -234,25 +281,6 @@ Proof.
   apply (Qle_not_lt (lower i) v H0 H). apply (Qle_not_lt v (upper i) H1 H).
 Qed.
 
-Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
-Proof.
-  intros x y. split.
-  apply Qlt_not_le. apply Qnot_le_lt.
-Qed.
-
-Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
-Proof.
-  intros x y. split.
-  apply Qle_not_lt. apply Qnot_lt_le.
-Qed.
-
-Lemma norn_nand : forall A B, ~A \/ ~B -> ~(A /\ B).
-Proof.
-  unfold not. intros A B H. destruct H.
-  intro HAandB. destruct HAandB as (HA & HB). contradiction.
-  intro HAandB. destruct HAandB as (HA & HB). apply (H HB).
-Qed.
-
 Lemma Iin_lower : forall i, Inempty i -> Iin (lower i) i.
 Proof.
   unfold Inempty, Iin. intros i H. split.
@@ -299,9 +327,9 @@ Proof.
   apply Ieq_sym. apply Ieq_sym.
 Qed.
 
-Lemma Ieq_trans : forall x y z, x == y /\ y == z -> x == z.
+Lemma Ieq_trans : forall x y z, x == y -> y == z -> x == z.
 Proof.
-  unfold Ieq. intros. destruct H. destruct H, H0. split.
+  unfold Ieq. intros. destruct H, H0. split.
   apply (Qeq_trans (lower x) (lower y) (lower z) H H0).
   apply (Qeq_trans (upper x) (upper y) (upper z) H1 H2).
 Qed.
@@ -335,19 +363,19 @@ Proof.
   apply (Ilt_not_gt i1 i0).
 Qed.
 
-Lemma Ile_trans : forall x y z, Inempty y -> x <= y /\ y <= z -> x <= z.
+Lemma Ile_trans : forall x y z, Inempty y -> x <= y -> y <= z -> x <= z.
 Proof.
   unfold Ile, Inempty.
   destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
-  simpl. intros. destruct H0.
+  simpl. intros.
   apply (Qle_trans xu yu zl (Qle_trans xu yl yu H0 H) H1).
 Qed.
 
-Lemma Ilt_trans : forall x y z, Inempty y -> x < y /\ y < z -> x < z.
+Lemma Ilt_trans : forall x y z, Inempty y -> x < y -> y < z -> x < z.
 Proof.
   unfold Ilt, Inempty.
   destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
-  simpl. intros. destruct H0.
+  simpl. intros.
   apply (Qlt_trans xu yu zl (Qlt_le_trans xu yl yu H0 H) H1).
 Qed.
 
@@ -378,9 +406,9 @@ Proof.
   apply (Qle_antisym (upper x) (upper y) H1 H2).
 Qed.
 
-Lemma Isubseteq_trans : forall x y z, Isubseteq x y /\ Isubseteq y z -> Isubseteq x z.
+Lemma Isubseteq_trans : forall x y z, Isubseteq x y -> Isubseteq y z -> Isubseteq x z.
 Proof.
-  unfold Isubseteq. intros. destruct H. destruct H, H0. split.
+  unfold Isubseteq. intros. destruct H. destruct H0. split.
   apply (Qle_trans (lower z) (lower y) (lower x) H0 H).
   apply (Qle_trans (upper x) (upper y) (upper z) H1 H2).
 Qed.
@@ -403,9 +431,9 @@ Proof.
   apply (Qlt_irrefl (lower x) H0).
 Qed.
 
-Lemma Isubset_trans : forall i0 i1 i2, Isubset i0 i1 /\ Isubset i1 i2 -> Isubset i0 i2.
+Lemma Isubset_trans : forall i0 i1 i2, Isubset i0 i1 -> Isubset i1 i2 -> Isubset i0 i2.
 Proof.
-  unfold Isubset. intros. destruct H. destruct H, H0. split.
+  unfold Isubset. intros. destruct H. destruct H0. split.
   apply (Qlt_trans (lower i2) (lower i1) (lower i0) H0 H).
   apply (Qlt_trans (upper i0) (upper i1) (upper i2) H1 H2). 
 Qed.
@@ -467,13 +495,6 @@ Proof.
   -- apply Qle_lteq. left. assumption.
   -- apply Qle_lteq. left.
      apply (Qlt_le_trans (lower y) (upper x) (upper y) H H1).
-Qed.
-
-Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
-Proof.
-  intros. split.
-  - intros. apply Qeq_sym. assumption.
-  - intros. apply Qeq_sym. assumption.
 Qed.
 
 Lemma Iintersection_if_divided4 : forall x y,
@@ -625,12 +646,6 @@ Proof.
   destruct H1. contradiction. contradiction.
 Qed.
 
-Lemma Qlt_asym : forall q0 q1 : Q, ~((q0 < q1)%Q /\ (q1 < q0)%Q).
-Proof.
-  unfold not. intros. destruct H.
-  q_order.
-Qed.
-
 Lemma Ilt_overlap_gt : forall i0 i1,
   Inempty i0 /\ Inempty i1 ->
     Ilt i0 i1 \/Ioverlap i0 i1 \/ Igt i0 i1.
@@ -660,7 +675,6 @@ Proof.
   ----- apply (Qlt_asym i1l i1u (conj H0 H1)).
   ----- rewrite H0 in H1. apply (Qlt_irrefl i1u H1).
 Qed. 
-
     
 Lemma Isubset_overlap :
   forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
@@ -685,6 +699,26 @@ Proof.
   rewrite (Ioverlap_comm i0 i1).
   rewrite (and_comm (~Iempty i0) (~Iempty i1)).
   apply (Isubset_overlap i1 i0).
+Qed.
+
+Lemma Ilt_overlap_gt_dec : forall x y, Inempty x -> Inempty y -> {x < y} + {Ioverlap x y} + {x > y}.
+Proof.
+  unfold Inempty, Ilt, Ioverlap, Iempty, Iintersection, not.
+  intros x y H H0. destruct x as (xl, xu). destruct y as (yl, yu).
+  simpl in H, H0. simpl.
+  destruct (Qlt_le_dec xu yl).
+  - left. left. assumption.
+  - destruct (Qlt_le_dec yu xl).
+  -- right. assumption.
+  -- left. right.
+     rewrite (Q.min_lt_iff xu yu (Qmax xl yl)).
+     rewrite (Q.max_lt_iff xl yl xu). rewrite (Q.max_lt_iff xl yl yu).
+     intros. destruct H1. destruct H1.
+  --- apply (Qlt_irrefl xu (Qlt_le_trans xu xl xu H1 H)).
+  --- apply (Qlt_irrefl yl (Qle_lt_trans yl xu yl q H1)).
+  --- destruct H1.
+  ---- apply (Qlt_irrefl yu (Qlt_le_trans yu xl yu H1 q0)).
+  ---- apply (Qlt_irrefl yu (Qlt_le_trans yu yl yu H1 H0)).
 Qed.
 
 
@@ -745,11 +779,11 @@ Proof.
   apply BBeq_sym. apply BBeq_sym.
 Qed.
 
-Lemma BBeq_trans : forall x y z, x == y /\ y == z -> x == z.
+Lemma BBeq_trans : forall x y z, x == y -> y == z -> x == z.
 Proof.
-  unfold BBeq. intros. destruct H. destruct H, H0. split.
-  apply (Ieq_trans (projx x) (projx y) (projx z) (conj H H0)).
-  apply (Ieq_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+  unfold BBeq. intros. destruct H. destruct H0. split.
+  apply (Ieq_trans (projx x) (projx y) (projx z) H H0).
+  apply (Ieq_trans (projy x) (projy y) (projy z) H1 H2).
 Qed.
 
 Definition BBoverlap (bb0 bb1 : BB) : Prop :=
@@ -776,11 +810,11 @@ Proof.
   apply (Isubseteq_antisym ay _by (conj H1 H2)).
 Qed.
 
-Lemma BBsubseteq_trans : forall x y z, BBsubseteq x y /\ BBsubseteq y z -> BBsubseteq x z.
+Lemma BBsubseteq_trans : forall x y z, BBsubseteq x y -> BBsubseteq y z -> BBsubseteq x z.
 Proof.
-  unfold BBsubseteq, BBnempty. intros. destruct H. destruct H, H0. split.
-  apply (Isubseteq_trans (projx x) (projx y) (projx z) (conj H H0)).
-  apply (Isubseteq_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+  unfold BBsubseteq, BBnempty. intros. destruct H. destruct H0. split.
+  apply (Isubseteq_trans (projx x) (projx y) (projx z) H H0).
+  apply (Isubseteq_trans (projy x) (projy y) (projy z) H1 H2).
 Qed.
 
 Definition BBintersection (bb0 bb1 : BB) : BB :=
@@ -807,11 +841,11 @@ Proof.
   apply (Isubset_irrefl (projx x) H H0).
 Qed.
 
-Lemma BBsubset_trans : forall x y z, BBsubset x y /\ BBsubset y z -> BBsubset x z.
+Lemma BBsubset_trans : forall x y z, BBsubset x y -> BBsubset y z -> BBsubset x z.
 Proof.
-  unfold BBsubset. intros. destruct H. destruct H, H0. split.
-  apply (Isubset_trans (projx x) (projx y) (projx z) (conj H H0)).
-  apply (Isubset_trans (projy x) (projy y) (projy z) (conj H1 H2)).
+  unfold BBsubset. intros. destruct H. destruct H0. split.
+  apply (Isubset_trans (projx x) (projx y) (projx z) H H0).
+  apply (Isubset_trans (projy x) (projy y) (projy z) H1 H2).
 Qed.
 
 Definition BBarea (bb : BB) : Q :=
@@ -822,8 +856,6 @@ Definition BBarea (bb : BB) : Q :=
 (******************** Set of BB ********************)
 
 Definition SetBB : Type := list BB.
-
-(*Lemma foo : forall sbb, (exist bb, In bb sbb /\ empty bb) -> empty sbb. *) 
 
 (* TODO: filter empty BB for efficiency *)
 Fixpoint _BB_SBBintersection (bb : BB) (sbb accum : SetBB) : SetBB :=
@@ -1201,13 +1233,11 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
     end
   | EXP_forall bound sbb_expr b_expr =>
     match Asbb sbb_expr env with
-    (*| Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr env) sbb) (Some True)*)
     | Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some True)
     | _ => None
     end
   | EXP_exists bound sbb_expr b_expr =>
     match Asbb sbb_expr env with
-    (*| Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr env) sbb) (Some False)*)
     | Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some False)
     | _ => None
     end

@@ -1,7 +1,7 @@
 # Formalization of BBSL with Coq
 
 
-## BBSL (Bounding Box Specification Language)
+## About BBSL (Bounding Box Specification Language)
 
 BBSL is a formal language specifying spatial relation between Bounding Boxes within an image.
 
@@ -31,7 +31,12 @@ $ sudo make install
 
 These examples can be run interactively in CoqIDE.
 
-- Examples/example\_lead\_vehicle\_stopped.v
+You will need to install this library in advance.
+
+See [Installation](#installation).
+
+
+- Examples/lead\_vehicle\_stopped.v
 
 
 
