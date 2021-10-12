@@ -10,6 +10,10 @@ Local Open Scope list_scope.
 
 Local Open Scope BBSL_scope.
 
+
+
+(******************** Interval ********************)
+
 Definition Interval : Type := Q * Q.
 
 Definition lower : Q * Q -> Q := fst.
@@ -475,6 +479,7 @@ Proof.
   apply (Ioverlap_not_lt i1 i0).
 Qed.
 
+(*
 (* helper *)
 Lemma DNE : forall A, ~~A <-> A.
 Proof.
@@ -490,7 +495,7 @@ Proof.
 Qed.
 
 (* use classical facts *)
-Lemma not_Ioverpal_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
+Lemma not_Ioverlap_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
 Proof.
   unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold Ilt. unfold Igt.
   intros. destruct i0. destruct i1. simpl.
@@ -512,6 +517,7 @@ Proof.
     left. right. assumption.
     right. left. assumption.
 Qed.
+*)
 
 Lemma not_lt_gt_overlap : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
 Proof.
@@ -589,6 +595,10 @@ Proof.
   rewrite (and_comm (~Iempty i0) (~Iempty i1)).
   apply (Isubset_overlap i1 i0).
 Qed.
+
+
+
+(******************** Bounding Box ********************)
 
 Definition BB : Type := Interval * Interval.
 
@@ -713,10 +723,12 @@ Proof.
   apply (Isubset_trans (projy x) (projy y) (projy z) (conj H1 H2)).
 Qed.
 
-
-
 Definition BBarea (bb : BB) : Q :=
   width (projx bb) * width (projy bb).
+
+
+
+(******************** Set of BB ********************)
 
 Definition SetBB : Type := list BB.
 
@@ -760,6 +772,10 @@ Definition SetBBarea (sbb : SetBB) : Q :=
 (* TODO what happen at 0-divided ? *)
 Definition RAT (sbb0 sbb1 : SetBB) : Q :=
   SetBBarea sbb0 / SetBBarea sbb1.
+
+
+
+(******************** Expressions ********************)
 
 Inductive SBBexp : Set :=
   | EXP_SBBvar (x : string)
@@ -815,6 +831,10 @@ Inductive Def : Set :=
 Definition Case : Set := string * list Def * Bexp.
 
 Definition Spec : Set := Cond * list Case.
+
+
+
+(******************** Semantic functions ********************)
 
 Module Import M := FMapList.Make(String_as_OT).
 
@@ -1185,17 +1205,7 @@ Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
     end
   end.
 
-Definition testEnv := add "q1" (Vq 1) (add "q0" (Vq 0) (empty Value)).
-
-Lemma foo : B (EXP_Qlt (EXP_Qvar "q0") (EXP_Qvar "q1")) testEnv
-  = match Aq (EXP_Qvar "q0") testEnv, Aq (EXP_Qvar "q1") testEnv with
-    | Some q0, Some q1 => Some (q0 < q1)%Q
-    | _, _ => None
-  end.
-Proof.
-  simpl. trivial.
-Qed.
-
+(* helper *)
 Lemma or_falser : forall A : Prop, A \/ False <-> A.
 Proof.
   intros. split.
@@ -1203,6 +1213,7 @@ Proof.
   - intros. apply (or_introl H).
 Qed.
 
+(* helper *)
 Lemma or_falsel : forall A : Prop, False \/ A <-> A.
 Proof.
   intros.
@@ -1211,6 +1222,7 @@ Proof.
   apply or_falser.
 Qed.
 
+(* helper *)
 Lemma or_truel : forall A : Prop, True \/ A <-> True.
 Proof.
   intros. split.
@@ -1218,6 +1230,7 @@ Proof.
   - intros. apply (or_introl H).
 Qed. 
 
+(* helper *)
 Lemma or_truer : forall A : Prop, A \/ True <-> True.
 Proof.
   intros.
@@ -1226,6 +1239,7 @@ Proof.
   apply or_truel.
 Qed.
 
+(* helper *)
 Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
 Proof.
   intros. split.
@@ -1233,51 +1247,23 @@ Proof.
   - intros. apply (conj H0 H).
 Qed.
 
+(* helper *)
 Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
 Proof.
   intros. split.
   intros. trivial. intros. apply (or_introl H).
 Qed.
 
+(* helper *)
 Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
 Proof.
   intros. rewrite (or_comm A B0).
   revert H. revert B0 A. apply or_l.
 Qed.
 
-(*
-Proposition aaa :
-  forall (confluent_region : Interval) (set_of_cars : SetBB),
-    let env :=
-      (add "合流領域" (Vi confluent_region) (add "他車集合" (Vsbb set_of_cars) (empty Value)))
-    in
-    let evaluated1 :=
-      B
-        (EXP_forall
-          "x"
-          (EXP_SBBvar "他車集合")
-          (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "x")) (EXP_Ivar "合流領域"))))
-        env
-    in
-    let evaluated := 
-      Ccase
-        ( "シーン１"
-        , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
-          ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
-          ]
-        , EXP_forall "x" (EXP_SBBvar "他車集合")
-            (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "x")) (EXP_Ivar "合流領域")))
-        ) 
-        env
-    in 
-    Inempty confluent_region ->
-       match evaluated1 with
-       | Some b => True
-       | _ => False
-       end.
-Proof.
-  simpl.
-*)
+
+
+(******************** Examples & proofs ********************)
 
 Definition example_confluence : Spec := 
   ( CND_None
@@ -1338,6 +1324,7 @@ Proposition comprehensiveness_of_example_confluence :
        | _ => False
        end.
 Proof.
+  simpl.
   intros confluent_region set_of_cars. destruct confluent_region as (region_l, region_u).
   destruct set_of_cars as [|car].
   -- simpl. rewrite (and_l True True).
@@ -1347,7 +1334,7 @@ Proof.
   -- destruct car as (car_x, car_y).
      destruct car_x as (car_xl, car_xu).
      destruct car_y as (car_yl, car_yu).
-     simpl. unfold Inempty. unfold Ieq. unfold Isubseteq.
+     simpl. unfold Inempty. unfold Ieq. unfold Isubseteq. simpl.
 
      destruct (Qlt_le_dec )
 
@@ -1379,6 +1366,39 @@ Proof.
 Qed.
 *)
 
+(* lead vehicle stopped
+ *
+ * exfunction
+ *   // 前方車両の存在をチェック，あればtrueを返す
+ *   前方車両がある():bool
+ *   // 前方車両のbounding boxを返す
+ *   前方車両():bb
+ *   // 減速しなければならない範囲のbounding boxを返す
+ *   減速区間() bb
+ * endexfunction
+ * 
+ * condition
+ *   [前方車両がある()]
+ * endcondition
+ * 
+ * case 減速
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) ≈ PROJ_y(減速区間)
+ * endcase
+ * 
+ * case 停止
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) < PROJ_y(減速区間)
+ * endcase
+ * 
+ * case レスポンス無し
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) > PROJ_y(減速区間)
+ * endcase
+ *)
 Definition example_lead_vehicle_stopped : Spec :=
   ( CND (EXP_Bvar "前方車両がある")
   , [ ( "減速"
@@ -1408,7 +1428,13 @@ Definition example_lead_vehicle_stopped : Spec :=
     ]
   ).
 
-Proposition comprehensiveness_of_example_lead_vehicle_stopped :
+(* ∀減速区間∈BB, 前方車両∈BB,
+ *     減速区間 ≠ ∅ ∧ 前方車両 ≠ ∅ ∧ 前方車両がある ⇒
+ *         (∃(L, P)∈[[example_lead_vehicle_stopped]], P)
+ *
+ * つまり，case 減速 ∨ case 停止 ∨ case レスポンス無し
+ *)
+Proposition comprehensiveness_of_example_lead_vehicle_stoptped :
   forall (exists_front : Prop) (front_bb dec : BB),
     let evaluated := 
       Cspec
@@ -1450,6 +1476,11 @@ Proof.
   ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
 Qed.
 
+(*
+ * case 減速 ∧ ¬(case 停止 ∨ case レスポンス無し) ∨
+ * case 停止 ∧ ¬(case 減速 ∨ case レスポンス無し) ∨
+ * case レスポンス無し ∧ ¬(case 減速 ∨ case 停止)
+ *)
 Proposition exclusiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
     let evaluated := 
@@ -1460,7 +1491,6 @@ Proposition exclusiveness_of_example_lead_vehicle_stopped :
     BBnempty front_bb /\ BBnempty dec /\ exists_front ->
        match option_map (fun cases => List.fold_left and (List.map (fun case =>
            ~snd case \/ List.fold_left and (List.map (fun case' => ~snd case' \/ fst case = fst case') cases) True
-
          ) cases) True) evaluated with
        | Some b => b
        | _ => False
@@ -1501,7 +1531,6 @@ Proof.
      left. intros. destruct H4. apply (Qle_lt_trans dec_yl f_yu dec_yl q0) in H5. apply (Qlt_irrefl dec_yl). assumption.
      right. trivial.
 Qed.
-
 
 Definition example_debris_static_in_lane : Spec :=
   ( CND (EXP_Bvar "静的障害物がある")
@@ -1780,6 +1809,10 @@ Definition example_vehicle_cutting_in_hwd : Spec :=
     ]
   ).
 
+
+
+(******************** Comparison with IoU ********************)
+
 Definition example_ratio_relation1_2 : Spec :=
   ( CND_None
   , [ ( "割合の関係１(IoU=0.5の場合)"
@@ -1936,6 +1969,10 @@ Definition example_comparison_relation1_2 : Spec :=
       )
     ]
   ).
+
+
+
+(******************** Comparison with Binary topological relationships ********************)
 
 Definition example_contains : Spec :=
   ( CND_None
