@@ -12,6 +12,155 @@ Local Open Scope BBSL_scope.
 
 
 
+(******************** Helpers ********************)
+
+Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
+Proof.
+  intros.
+  rewrite (Q.min_comm q1 q0).
+  split.
+  - intros. assumption.
+  - intros. assumption.
+Qed.
+
+Lemma Qmax_ltr_comm : forall q q0 q1 : Q, (q < Qmax q0 q1)%Q <-> (q < Qmax q1 q0)%Q.
+Proof.
+  intros.
+  rewrite (Q.max_comm q1 q0).
+  split.
+  - intros. assumption.
+  - intros. assumption.
+Qed.
+
+(*
+(* use classical facts *)
+Lemma DNE : forall A, ~~A <-> A.
+Proof.
+  intros.
+  destruct (excluded_middle_informative A).
+  split. 
+  - intros. assumption.
+  - intros.
+    unfold not. intros.
+    apply (H0 H).
+  - unfold not. split. 
+    intros. contradiction. intros. apply (H0 H).
+Qed.
+
+(* use classical facts *)
+Lemma not_Ioverlap_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
+Proof.
+  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold Ilt. unfold Igt.
+  intros. destruct i0. destruct i1. simpl.
+  rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
+  simpl in H. unfold not in H.  destruct H.
+  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
+  rewrite (Q.max_lt_iff q q1 q0).
+  rewrite (Q.max_lt_iff q q1 q2).
+  split.
+  - intros.
+    destruct H1. destruct H1.
+    contradiction.
+    left. assumption.
+    destruct H1.
+    right. assumption.
+    contradiction.
+  - intros.
+    destruct H1.
+    left. right. assumption.
+    right. left. assumption.
+Qed.
+*)
+
+(* helper *)
+Definition option_and (a b : option Prop) : option Prop :=
+    match a, b with
+    | Some a, Some b => Some (a /\ b)
+    | _, _ => None
+    end.
+
+(* helper *)
+Definition option_or (a b : option Prop) : option Prop :=
+    match a, b with
+    | Some a, Some b => Some (a \/ b)
+    | _, _ => None
+    end.
+
+(* helper *)
+Lemma toTrue : forall P : Prop, P -> P <-> True.
+Proof.
+  intros. split.
+  intros. trivial.
+  intros. apply H.
+Qed.
+
+(* helper *)
+Lemma or_falser : forall A : Prop, A \/ False <-> A.
+Proof.
+  intros. split.
+  - intros. destruct H. assumption. contradiction. 
+  - intros. apply (or_introl H).
+Qed.
+
+(* helper *)
+Lemma or_falsel : forall A : Prop, False \/ A <-> A.
+Proof.
+  intros.
+  rewrite (or_comm False A).
+  revert A.
+  apply or_falser.
+Qed.
+
+(* helper *)
+Lemma or_truel : forall A : Prop, True \/ A <-> True.
+Proof.
+  intros. split.
+  - intros. destruct H. trivial. trivial.
+  - intros. apply (or_introl H).
+Qed. 
+
+(* helper *)
+Lemma or_truer : forall A : Prop, A \/ True <-> True.
+Proof.
+  intros.
+  rewrite (or_comm A True).
+  revert A.
+  apply or_truel.
+Qed.
+
+(* helper *)
+Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
+Proof.
+  intros. split.
+  - intros. destruct H0. assumption.
+  - intros. apply (conj H0 H).
+Qed.
+
+(* helper *)
+Lemma and_r : forall A B : Prop, A -> (A /\ B <-> B).
+Proof.
+  intros.
+  rewrite (and_comm A B).
+  revert H.
+  apply and_l.
+Qed.
+
+(* helper *)
+Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
+Proof.
+  intros. split.
+  intros. trivial. intros. apply (or_introl H).
+Qed.
+
+(* helper *)
+Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
+Proof.
+  intros. rewrite (or_comm A B).
+  revert H. revert B A. apply or_l.
+Qed.
+
+
+
 (******************** Interval ********************)
 
 Definition Interval : Type := Q * Q.
@@ -405,25 +554,6 @@ Qed.
 Definition Ioverlap (i0 i1 : Interval) : Prop :=
   ~Iempty (Iintersection i0 i1).
 
-(* helper *)
-Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
-Proof.
-  intros.
-  rewrite (Q.min_comm q1 q0).
-  split.
-  - intros. assumption.
-  - intros. assumption.
-Qed.
-
-(* helper *)
-Lemma Qmax_ltr_comm : forall q q0 q1 : Q, (q < Qmax q0 q1)%Q <-> (q < Qmax q1 q0)%Q.
-Proof.
-  intros.
-  rewrite (Q.max_comm q1 q0).
-  split.
-  - intros. assumption.
-  - intros. assumption.
-Qed.
 
 Lemma Ioverlap_comm : forall i0 i1, Ioverlap i0 i1 <-> Ioverlap i1 i0.
 Proof.
@@ -479,45 +609,6 @@ Proof.
   apply (Ioverlap_not_lt i1 i0).
 Qed.
 
-(*
-(* helper *)
-Lemma DNE : forall A, ~~A <-> A.
-Proof.
-  intros.
-  destruct (excluded_middle_informative A).
-  split. 
-  - intros. assumption.
-  - intros.
-    unfold not. intros.
-    apply (H0 H).
-  - unfold not. split. 
-    intros. contradiction. intros. apply (H0 H).
-Qed.
-
-(* use classical facts *)
-Lemma not_Ioverlap_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
-Proof.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold Ilt. unfold Igt.
-  intros. destruct i0. destruct i1. simpl.
-  rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
-  simpl in H. unfold not in H.  destruct H.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
-  rewrite (Q.max_lt_iff q q1 q0).
-  rewrite (Q.max_lt_iff q q1 q2).
-  split.
-  - intros.
-    destruct H1. destruct H1.
-    contradiction.
-    left. assumption.
-    destruct H1.
-    right. assumption.
-    contradiction.
-  - intros.
-    destruct H1.
-    left. right. assumption.
-    right. left. assumption.
-Qed.
-*)
 
 Lemma not_lt_gt_overlap : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
 Proof.
@@ -765,11 +856,9 @@ Fixpoint _SetBBarea (sbb accum : SetBB) (area : Q) : Q :=
     _SetBBarea sbb' (cons bb accum) (area + BBarea bb - sbb''area)
   end.
 
-(* TODO wrong algorithm *)
 Definition SetBBarea (sbb : SetBB) : Q :=
   _SetBBarea sbb nil 0.
 
-(* TODO what happen at 0-divided ? *)
 Definition RAT (sbb0 sbb1 : SetBB) : Q :=
   SetBBarea sbb0 / SetBBarea sbb1.
 
@@ -777,20 +866,24 @@ Definition RAT (sbb0 sbb1 : SetBB) : Q :=
 
 (******************** Expressions ********************)
 
+(* Set of bounding box *)
 Inductive SBBexp : Set :=
   | EXP_SBBvar (x : string)
   | EXP_SBBintersection (sbb0 sbb1 : SBBexp) | EXP_SBBunion (sbb0 sbb1 : SBBexp)
   | EXP_makeSBB (bbs : list BBexp)
+(* Bouding box *)
 with BBexp : Set :=
   | EXP_BBvar (x : string)
   | EXP_makeBB (x y : Iexp)
   (* 画像全体のBB *)
   | EXP_BBimg
+(* Interval *)
 with Iexp : Set :=
   | EXP_Ivar (x : string)
   | EXP_projx (bb : BBexp) | EXP_projy (bb : BBexp)
   | EXP_Iintersection (i0 i1 : Iexp)
   | EXP_makeI (l u : Qexp)
+(* Rational number *)
 with Qexp : Set :=
   | EXP_Q (a: Q)
   | EXP_Qvar (x : string)
@@ -799,6 +892,7 @@ with Qexp : Set :=
   | EXP_projxl (bb : BBexp) | EXP_projxu (bb : BBexp)
   | EXP_projyl (bb : BBexp) | EXP_projyu (bb : BBexp).
 
+(* Boolean *)
 Inductive Bexp : Set :=
   | EXP_Bvar (x : string)
   | EXP_not (b : Bexp) | EXP_and (b0 b1 : Bexp) | EXP_or (b0 b1 : Bexp)
@@ -817,6 +911,11 @@ Inductive Bexp : Set :=
   | EXP_forall (bound : string) (sbb : SBBexp) (b : Bexp)
   | EXP_exists (bound : string) (sbb : SBBexp) (b : Bexp).
 
+
+
+(******************** Syntax ********************)
+
+(* Condition block *)
 Inductive Cond : Set :=
   | CND_None
   | CND (b : Bexp).
@@ -828,8 +927,10 @@ Inductive Def : Set :=
   | DEF_Q (x : string) (q : Qexp)
   | DEF_B (x : string) (b : Bexp).
 
+(* Case block *)
 Definition Case : Set := string * list Def * Bexp.
 
+(* Whole of syntax *)
 Definition Spec : Set := Cond * list Case.
 
 
@@ -842,8 +943,10 @@ Inductive Value : Type :=
   | Vb (x : Prop) | Vq (x : Q) | Vi (x : Interval)
   | Vbb (x : BB) | Vsbb (x : SetBB).
 
+(* Environment: a set of string(a variable name) and value pairs  *)
 Definition Env := M.t Value.
 
+(* Set of bounding box *)
 Fixpoint Asbb (expr : SBBexp) (env : Env) : option SetBB :=
   match expr with
   | EXP_SBBvar s =>
@@ -869,6 +972,7 @@ Fixpoint Asbb (expr : SBBexp) (env : Env) : option SetBB :=
       end
     ) (List.map (fun bb_expr => Abb bb_expr env) bb_exprs) (Some nil)
   end
+(* Bounding box *)
 with Abb (expr : BBexp) (env : Env) : option BB :=
   match expr with
   | EXP_BBimg =>
@@ -887,6 +991,7 @@ with Abb (expr : BBexp) (env : Env) : option BB :=
     | _, _ => None
     end
   end
+(* Interval *)
 with Ai (expr : Iexp) (env : Env) : option Interval :=
   match expr with
   | EXP_Ivar s =>
@@ -915,7 +1020,7 @@ with Ai (expr : Iexp) (env : Env) : option Interval :=
     | _, _ => None
     end
   end
-
+(* Rational number *)
 with Aq (expr : Qexp) (env : Env) : option Q :=
   match expr with
   | EXP_Q a => Some a
@@ -966,18 +1071,7 @@ with Aq (expr : Qexp) (env : Env) : option Q :=
     end
   end.
 
-Definition option_and (a b : option Prop) : option Prop :=
-    match a, b with
-    | Some a, Some b => Some (a /\ b)
-    | _, _ => None
-    end.
-
-Definition option_or (a b : option Prop) : option Prop :=
-    match a, b with
-    | Some a, Some b => Some (a \/ b)
-    | _, _ => None
-    end.
-
+(* Boolean *)
 Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
   match expr with
   | EXP_Bvar s =>
@@ -1119,6 +1213,7 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
     end
   end.
 
+(* Condition block *)
 Definition Ccond (cond : Cond) (env : Env) : option Prop :=
   match cond with
   | CND_None => Some True
@@ -1177,13 +1272,7 @@ Definition Ccase (case : Case) (env : Env) : option (string * Prop) :=
     end
   end.
 
-Lemma toTrue : forall P : Prop, P -> P <-> True.
-Proof.
-  intros. split.
-  intros. trivial.
-  intros. apply H.
-Qed.
-
+(* Case block *)
 Fixpoint Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) : option (list (string * Prop)) :=
   match cases with
   | nil => Some accum
@@ -1194,6 +1283,7 @@ Fixpoint Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) :
     end
   end.
 
+(* Whole of syntax *)
 Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
   match spec with
   | (cond, cases) =>
@@ -1204,1031 +1294,3 @@ Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
     | _, _ => None
     end
   end.
-
-(* helper *)
-Lemma or_falser : forall A : Prop, A \/ False <-> A.
-Proof.
-  intros. split.
-  - intros. destruct H. assumption. contradiction. 
-  - intros. apply (or_introl H).
-Qed.
-
-(* helper *)
-Lemma or_falsel : forall A : Prop, False \/ A <-> A.
-Proof.
-  intros.
-  rewrite (or_comm False A).
-  revert A.
-  apply or_falser.
-Qed.
-
-(* helper *)
-Lemma or_truel : forall A : Prop, True \/ A <-> True.
-Proof.
-  intros. split.
-  - intros. destruct H. trivial. trivial.
-  - intros. apply (or_introl H).
-Qed. 
-
-(* helper *)
-Lemma or_truer : forall A : Prop, A \/ True <-> True.
-Proof.
-  intros.
-  rewrite (or_comm A True).
-  revert A.
-  apply or_truel.
-Qed.
-
-(* helper *)
-Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
-Proof.
-  intros. split.
-  - intros. destruct H0. assumption.
-  - intros. apply (conj H0 H).
-Qed.
-
-(* helper *)
-Lemma and_r : forall A B : Prop, A -> (A /\ B <-> B).
-Proof.
-  intros.
-  rewrite (and_comm A B0).
-  revert H.
-  apply and_l.
-Qed.
-
-(* helper *)
-Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
-Proof.
-  intros. split.
-  intros. trivial. intros. apply (or_introl H).
-Qed.
-
-(* helper *)
-Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
-Proof.
-  intros. rewrite (or_comm A B0).
-  revert H. revert B0 A. apply or_l.
-Qed.
-
-
-
-(******************** Examples & proofs ********************)
-
-Definition example_confluence : Spec := 
-  ( CND_None
-  , [ ( "シーン１"
-      , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
-        ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
-        ]
-      , EXP_forall "x" (EXP_SBBvar "他車集合")
-          (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "x")) (EXP_Ivar "合流領域")))
-      )
-    ; ( "シーン２"
-      , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
-        ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "他車集合")
-          (EXP_and
-            (EXP_Qeq (EXP_projyl (EXP_BBvar "x")) (EXP_proju (EXP_Ivar "合流領域")))
-            (EXP_forall "y" (EXP_SBBvar "他車集合")
-              (EXP_or (EXP_not (EXP_Ieq (EXP_projy (EXP_BBvar "y")) (EXP_Ivar "合流領域")))
-                      (EXP_BBeq (EXP_BBvar "x") (EXP_BBvar "y")))))
-      )
-    ; ( "シーン３"
-      , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
-        ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "他車集合")
-         (EXP_and
-           (EXP_Qeq (EXP_projyl (EXP_BBvar "x")) (EXP_proju (EXP_Ivar "合流領域")))
-           (EXP_and
-             (EXP_exists "y" (EXP_SBBvar "他車集合")
-               (EXP_and
-                 (EXP_Qeq (EXP_projyu (EXP_BBvar "y")) (EXP_projl (EXP_Ivar "合流領域")))
-                 (EXP_not (EXP_BBeq (EXP_BBvar "x") (EXP_BBvar "y")))))
-             (EXP_forall "z" (EXP_SBBvar "他車領域")
-                   (EXP_not (EXP_Isupseteq (EXP_Ivar "合流領域") (EXP_projy (EXP_BBvar "z")))))))
-      )
-    ; ( "シーン４"
-      , [ DEF_I "合流領域" (EXP_Ivar "合流領域")
-        ; DEF_SBB "他車集合" (EXP_SBBvar "他車集合")
-        ]
-      , EXP_exists "z" (EXP_SBBvar "他車集合")
-          (EXP_Isupseteq (EXP_Ivar "合流領域") (EXP_projy (EXP_BBvar "z")))
-      )
-    ]
-  ).
-
-(*
-Proposition comprehensiveness_of_example_confluence :
-  forall (confluent_region : Interval) (set_of_cars : SetBB),
-    let evaluated := 
-      Cspec
-        example_confluence
-        (add "合流領域" (Vi confluent_region) (add "他車集合" (Vsbb set_of_cars) (empty Value)))
-    in 
-    Inempty confluent_region ->
-       match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
-       | Some b => b
-       | _ => False
-       end.
-Proof.
-  simpl.
-  intros confluent_region set_of_cars. destruct confluent_region as (region_l, region_u).
-  destruct set_of_cars as [|car].
-  -- simpl. rewrite (and_l True True).
-     rewrite (or_truer (((False \/ True /\ False) \/ True /\ False) \/ True /\ False)).
-     trivial.
-     trivial.
-  -- destruct car as (car_x, car_y).
-     destruct car_x as (car_xl, car_xu).
-     destruct car_y as (car_yl, car_yu).
-     simpl. unfold Inempty. unfold Ieq. unfold Isubseteq. simpl.
-
-     destruct (Qlt_le_dec )
-
-  destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
-  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
-  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
-  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-  - left. left. right. apply (conj H2 q).
-  - destruct (Qlt_le_dec f_yu dec_yl).
-  -- left. right. apply (conj H2 q0).
-  -- right. split. assumption. intros. destruct H4. destruct H4.
-  --- apply (Qle_lteq f_yl f_yu) in H1. destruct H1.
-  ---- apply (Qlt_asym f_yl f_yu (conj H1 H4)).
-  ---- rewrite H1 in H4. apply (Qlt_irrefl f_yu H4).
-  --- apply (Qle_lteq dec_yl f_yu) in q0. destruct q0.
-  ---- apply (Qlt_asym dec_yl f_yu (conj H5 H4)).
-  ---- rewrite H5 in H4. apply (Qlt_irrefl f_yu H4).
-  --- destruct H4.
-  ---- apply (Qle_lteq f_yl dec_yu) in q. destruct q.
-  ----- apply (Qlt_asym f_yl dec_yu (conj H5 H4)).
-  ----- rewrite H5 in H4. apply (Qlt_irrefl dec_yu H4).
-  ---- apply (Qle_lteq dec_yl dec_yu) in H3. destruct H3.
-  ----- apply (Qlt_asym dec_yl dec_yu (conj H3 H4)).
-  ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
-Qed.
-*)
-
-Definition example_lead_vehicle_decelerating : Spec :=
-  ( CND (EXP_Bvar "前方車両がある")
-  , [ ("追従"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "追従区間" (EXP_BBvar "追従区間")
-        ]
-      , EXP_Ioverlap
-          (EXP_projy (EXP_BBvar "前方車両"))
-          (EXP_projy (EXP_BBvar "追従区間"))
-      )
-    ; ( "減速"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_Ioverlap
-          (EXP_projy (EXP_BBvar "前方車両"))
-          (EXP_projy (EXP_BBvar "減速区間"))
-      )
-    ; ( "停止"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "追従区間" (EXP_BBvar "追従区間")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_and
-          (EXP_Ilt
-            (EXP_projy (EXP_BBvar "前方車両"))
-            (EXP_projy (EXP_BBvar "追従区間")))
-          (EXP_Ilt
-            (EXP_projy (EXP_BBvar "前方車両"))
-            (EXP_projy (EXP_BBvar "減速区間")))
-
-      )
-    ; ( "レスポンスなし"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "追従区間" (EXP_BBvar "追従区間")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_and
-          (EXP_Igt
-            (EXP_projy (EXP_BBvar "前方車両"))
-            (EXP_projy (EXP_BBvar "追従区間")))
-          (EXP_Igt
-            (EXP_projy (EXP_BBvar "前方車両"))
-            (EXP_projy (EXP_BBvar "減速区間")))
-      )
-    ]
-  ).
-
-(* TODO 
-Proposition comprehensiveness_of_example_lead_vehicle_decelerating :
-  forall (exists_front : Prop) (front_bb dec follow : BB),
-    let evaluated := 
-      Cspec
-        example_lead_vehicle_decelerating
-        (add "減速区間" (Vbb dec) (add "追従区間" (Vbb follow) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value)))))
-    in 
-    BBnempty front_bb /\ BBnempty dec /\ BBnempty follow /\ exists_front ->
-       match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
-       | Some b => b
-       | _ => False
-       end.
-Proof.
-  simpl. unfold BBnempty. unfold Inempty. unfold Igt.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
-  intros. destruct dec as (dec_x, dec_y). destruct follow as (follow_x, follow_y).
-  destruct front_bb as (f_x, f_y).
-  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
-  destruct follow_x as (follow_xl, follow_xu). destruct follow_y as (follow_yl, follow_yu).
-  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0.
-  destruct H0. destruct H2. destruct H2.
-  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  rewrite (Q.min_lt_iff f_yu follow_yu (Qmax f_yl follow_yl)).
-  rewrite (Q.max_lt_iff f_yl follow_yl f_yu).
-  rewrite (Q.max_lt_iff f_yl follow_yl follow_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-  - left. right.
-    apply (and_r exists_front (((f_yu < f_yl)%Q \/ (f_yu < dec_yl)%Q) \/ (dec_yu < f_yl)%Q \/ (dec_yu < dec_yl)%Q -> False) H4).
-    intros. destruct H6. destruct H6.
-  -- apply (Qlt_le_trans f_yu f_yl f_yu H6) in H1. apply (Qlt_irrefl f_yu H1).
-  -- apply (Qlt_le_trans f_yu dec_yl dec_yu H6) in H3.
-     apply (Qle_lt_trans f_yl f_yu dec_yu H1) in H3.
-     apply (Qlt_trans dec_yu f_yl dec_yu q) in H3.
-     apply (Qlt_irrefl dec_yu H3).
-  -- destruct H6.
-  --- destruct (Qlt_le_dec f_yu follow_yl).
-  ---- destruct (Qlt_le_dec follow_yu dec_yl).
-  ----- apply (Qlt_le_trans f_yu follow_yl follow_yu q0) in H5.
-        apply (Qlt_trans f_yu follow_yu dec_yl H5) in q1.
-        apply (Qlt_le_trans f_yu dec_yl dec_yu q1) in H3.
-        apply (Qlt_le_trans dec_yu f_yl f_yu q) in H1.
-        apply (Qlt_trans dec_yu f_yu dec_yu H1) in H3.
-        apply (Qlt_irrefl dec_yu H3).
-  ----- destruct (Qlt_le_dec follow_yu dec_yl).
-  ------ apply (Qlt_le_trans follow_yu dec_yl follow_yu q2) in q1.
-         apply (Qlt_irrefl follow_yu q1).
-  ------ destruct (Qlt_le_dec follow_yu dec_yl).
-  ------- apply (Qlt_le_trans f_yu follow_yl follow_yu q0) in H5.
-          apply (Qlt_trans f_yu follow_yu dec_yl H5) in q3.
-          apply (Qlt_le_trans f_yu dec_yl dec_yu q3) in H3.
-          apply (Qlt_le_trans dec_yu f_yl f_yu q) in H1.
-          apply (Qlt_trans dec_yu f_yu dec_yu H1) in H3.
-          apply (Qlt_irrefl dec_yu H3).
-  ------- 
-
-apply (Qlt_le_trans dec_yu f_yl f_yu q) in H1.
-
-        apply (Qlt_trans dec_yu f_yu follow_yl H1) in q0.
-  
-
-  - right. destruct (Qlt_le_dec follow_yl f_yu).
-  -- destruct (Qlt_le_dec follow_yu f_yl).
-  --- apply (and_r exists_front (((f_yu < f_yl)%Q \/ (f_yu < follow_yl)%Q) \/ (follow_yu < f_yl)%Q \/ (follow_yu < follow_yl)%Q -> False) H4).
-      intros. destruct H6. destruct H6.
-  ---- apply (Qle_lt_trans f_yl f_yu f_yl H1) in H6. apply (Qlt_irrefl f_yl H6).
-  ---- apply (Qlt_le_trans f_yu follow_yl follow_yu H6) in H5.
-       apply (Qlt_trans f_yu follow_yu f_yl H5) in q1.
-       apply (Qlt_le_trans f_yu f_yl f_yu q1) in H1.
-       apply (Qlt_irrefl f_yu H1).
-  ---- destruct H6. destruct (Qlt_le_dec dec_yu follow_yl).
-       
-  ----- apply (Qlt_le_trans dec_yu follow_yl follow_yu q2) in H5.
-  apply (Qlt_trans dec_yu follow_yl f_yu q2) in q0.
-       
-
-  - left. left. right. destruct (Qlt_le_dec f_yu follow_yl).
-  -- 
-*)
-
-(* lead vehicle stopped
- *
- * exfunction
- *   // 前方車両の存在をチェック，あればtrueを返す
- *   前方車両がある():bool
- *   // 前方車両のbounding boxを返す
- *   前方車両():bb
- *   // 減速しなければならない範囲のbounding boxを返す
- *   減速区間() bb
- * endexfunction
- * 
- * condition
- *   [前方車両がある()]
- * endcondition
- * 
- * case 減速
- *   let 前方車両:bb = 前方車両(),
- *       減速区間:bb = 減速区間()
- *   in PROJ_y(前方車両) ≈ PROJ_y(減速区間)
- * endcase
- * 
- * case 停止
- *   let 前方車両:bb = 前方車両(),
- *       減速区間:bb = 減速区間()
- *   in PROJ_y(前方車両) < PROJ_y(減速区間)
- * endcase
- * 
- * case レスポンス無し
- *   let 前方車両:bb = 前方車両(),
- *       減速区間:bb = 減速区間()
- *   in PROJ_y(前方車両) > PROJ_y(減速区間)
- * endcase
- *)
-Definition example_lead_vehicle_stopped : Spec :=
-  ( CND (EXP_Bvar "前方車両がある")
-  , [ ( "減速"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_Ioverlap
-          (EXP_projy (EXP_BBvar "前方車両"))
-          (EXP_projy (EXP_BBvar "減速区間"))
-      )
-    ; ( "停止"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_Ilt
-          (EXP_projy (EXP_BBvar "前方車両"))
-          (EXP_projy (EXP_BBvar "減速区間"))
-      )
-    ; ( "レスポンスなし"
-      , [ DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_Igt
-          (EXP_projy (EXP_BBvar "前方車両"))
-          (EXP_projy (EXP_BBvar "減速区間"))
-      )
-    ]
-  ).
-
-(* ∀減速区間∈BB, 前方車両∈BB,
- *     減速区間 ≠ ∅ ∧ 前方車両 ≠ ∅ ∧ 前方車両がある ⇒
- *         (∃(L, P)∈[[example_lead_vehicle_stopped]], P)
- *
- * つまり，case 減速 ∨ case 停止 ∨ case レスポンス無し
- *)
-Proposition comprehensiveness_of_example_lead_vehicle_stoptped :
-  forall (exists_front : Prop) (front_bb dec : BB),
-    let evaluated := 
-      Cspec
-        example_lead_vehicle_stopped
-        (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
-    in 
-    BBnempty front_bb /\ BBnempty dec /\ exists_front ->
-       match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
-       | Some b => b
-       | _ => False
-       end.
-Proof.
-  simpl. unfold BBnempty. unfold Inempty. unfold Igt. unfold Ilt.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
-  intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
-  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
-  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
-  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-  - left. left. right. apply (conj H2 q).
-  - destruct (Qlt_le_dec f_yu dec_yl).
-  -- left. right. apply (conj H2 q0).
-  -- right. split. assumption. intros. destruct H4. destruct H4.
-  --- apply (Qle_lteq f_yl f_yu) in H1. destruct H1.
-  ---- apply (Qlt_asym f_yl f_yu (conj H1 H4)).
-  ---- rewrite H1 in H4. apply (Qlt_irrefl f_yu H4).
-  --- apply (Qle_lteq dec_yl f_yu) in q0. destruct q0.
-  ---- apply (Qlt_asym dec_yl f_yu (conj H5 H4)).
-  ---- rewrite H5 in H4. apply (Qlt_irrefl f_yu H4).
-  --- destruct H4.
-  ---- apply (Qle_lteq f_yl dec_yu) in q. destruct q.
-  ----- apply (Qlt_asym f_yl dec_yu (conj H5 H4)).
-  ----- rewrite H5 in H4. apply (Qlt_irrefl dec_yu H4).
-  ---- apply (Qle_lteq dec_yl dec_yu) in H3. destruct H3.
-  ----- apply (Qlt_asym dec_yl dec_yu (conj H3 H4)).
-  ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
-Qed.
-
-(*
- * case 減速 ∧ ¬(case 停止 ∨ case レスポンス無し) ∨
- * case 停止 ∧ ¬(case 減速 ∨ case レスポンス無し) ∨
- * case レスポンス無し ∧ ¬(case 減速 ∨ case 停止)
- *)
-Proposition exclusiveness_of_example_lead_vehicle_stopped :
-  forall (exists_front : Prop) (front_bb dec : BB),
-    let evaluated := 
-      Cspec
-        example_lead_vehicle_stopped
-        (add "減速区間" (Vbb dec) (add "前方車両" (Vbb front_bb) (add "前方車両がある" (Vb exists_front) (empty Value))))
-    in 
-    BBnempty front_bb /\ BBnempty dec /\ exists_front ->
-       match option_map (fun cases => List.fold_left and (List.map (fun case =>
-           ~snd case \/ List.fold_left and (List.map (fun case' => ~snd case' \/ fst case = fst case') cases) True
-         ) cases) True) evaluated with
-       | Some b => b
-       | _ => False
-       end.
-Proof.
-  simpl. unfold BBnempty. unfold Ioverlap. unfold Iintersection.
-  unfold Iempty. unfold Inempty. unfold not. unfold Ilt.
-  intros. destruct dec as (dec_x, dec_y). destruct front_bb as (f_x, f_y).
-  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
-  destruct f_x as (f_xl, f_xu). destruct f_y as (f_yl, f_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
-  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-  split. split. split. trivial. right. split. split. split. trivial. right. trivial.
-  left. intros. destruct H4. apply (Qle_lt_trans dec_yl dec_yu f_yl H3) in q.
-  -- destruct (Qlt_le_dec f_yu dec_yl).
-     apply (Qle_lt_trans f_yl f_yu dec_yl H1) in q0. apply (Qlt_asym dec_yl f_yl (conj q q0)).
-     apply (Qlt_le_trans dec_yl f_yl f_yu q) in H1. apply (Qlt_asym dec_yl f_yu (conj H1 H5)).
-  -- left. intros. destruct H4. destruct H5. right. left. assumption.
-  -- left. intros. destruct H4. apply (Qlt_le_trans dec_yu f_yl f_yu q) in H1.
-     apply (Qle_lt_trans dec_yl dec_yu f_yu H3) in H1. apply (Qlt_asym dec_yl f_yu (conj H1 H5)).
-  -- left. intros. destruct H4. destruct H5. right. left. assumption.
-  -- destruct (Qlt_le_dec f_yu dec_yl).
-     split. split. split. trivial. left. intros. destruct H4.
-     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
-     right. split. split. split. trivial. left. intros. destruct H4.
-     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
-     right. trivial. left. intros. destruct H4. destruct H5. left. right. assumption.
-     left. intros. destruct H4. destruct H5. left. right. assumption.
-     split. split. split. trivial. left. intros. destruct H4.
-     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
-     left. intros. destruct H4. apply (Qle_lt_trans dec_yl f_yu dec_yl q0) in H5.
-     apply (Qlt_irrefl dec_yl) in H5. assumption.
-     right. split. split. split. trivial. left. intros. destruct H4.
-     apply (Qle_lt_trans f_yl dec_yu f_yl q) in H5. apply (Qlt_irrefl f_yl) in H5. assumption.
-     left. intros. destruct H4. apply (Qle_lt_trans dec_yl f_yu dec_yl q0) in H5. apply (Qlt_irrefl dec_yl). assumption.
-     right. trivial.
-Qed.
-
-Definition example_debris_static_in_lane : Spec :=
-  ( CND (EXP_Bvar "静的障害物がある")
-  , [ ( "減速"
-      , [ DEF_SBB "障害物集合" (EXP_SBBvar "障害物集合")
-        ; DEF_SBB "進行区間集合" (EXP_SBBvar "進行区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "障害物集合")
-          (EXP_exists "y" (EXP_SBBvar "進行区間集合")
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-              (EXP_and
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ; ( "停止"
-      , [ DEF_SBB "障害物集合" (EXP_SBBvar "障害物集合")
-        ; DEF_SBB "進行区間集合" (EXP_SBBvar "進行区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "障害物集合")
-          (EXP_exists "y" (EXP_SBBvar "進行区間集合")
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-              (EXP_and
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))
-                (EXP_Ilt (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ; ( "レスポンスなし"
-      , [ DEF_SBB "障害物集合" (EXP_SBBvar "障害物集合")
-        ; DEF_SBB "進行区間集合" (EXP_SBBvar "進行区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "障害物集合")
-          (EXP_exists "y" (EXP_SBBvar "進行区間集合")
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-              (EXP_and
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))
-                (EXP_Igt (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ]
-  ).
-
-(**
-Proposition comprehensiveness_of_example_debris_static_in_lane :
-  forall (exists_debris : Prop) (debrises : SetBB) (lane_bbs : SetBB) (dec : BB),
-    let evaluated :=
-      Cspec
-        example_debris_static_in_lane
-        (add "減速区間" (Vbb dec) (add "進行区間集合" (Vsbb lane_bbs) (add "障害物集合" (Vsbb debrises) (add "静的障害物がある" (Vb exists_debris) (empty Value)))))
-    in
-    BBnempty dec /\ exists_debris ->
-      match option_map (fun ev => List.fold_left or (List.map snd ev) False) evaluated with
-      | Some b => b
-      | _ => False
-      end.
-Proof.
-  simpl. unfold BBnempty. unfold Inempty. unfold Igt. unfold Ilt.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
-  intros. destruct dec as (dec_x, dec_y). 
-  destruct dec_x as (dec_xl, dec_xu). destruct dec_y as (dec_yl, dec_yu).
-  simpl. simpl in H. destruct H. destruct H. destruct H0. destruct H0.
-  rewrite (Q.min_lt_iff f_yu dec_yu (Qmax f_yl dec_yl)).
-  rewrite (Q.max_lt_iff f_yl dec_yl dec_yu).
-  rewrite (Q.max_lt_iff f_yl dec_yl f_yu).
-  destruct (Qlt_le_dec dec_yu f_yl).
-*)
-
-Definition example_vehicle_cutting_in : Spec :=
-  ( CND (EXP_and (EXP_Bvar "前方車両がある") (EXP_Bvar "他車両がある"))
-  , [ ( "停止"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "自車線区間集合" (EXP_SBBvar "自車線区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_exists "x" (EXP_SBBvar "自車線区間集合")
-          (EXP_and
-            (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-            (EXP_Ioverlap (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間"))))
-      )
-    ; ( "減速"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "自車線区間集合" (EXP_SBBvar "自車線区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_and
-          (EXP_forall "x" (EXP_SBBvar "自車線区間集合")
-            (EXP_and
-              (EXP_not (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x"))))
-              (EXP_Ilt (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間")))))
-          (EXP_exists "x" (EXP_SBBvar "自車線区間")
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-              (EXP_Ioverlap (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間")))))
-      )
-    ; ( "前方車両に従う"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ]
-      , EXP_Qlt (EXP_projyl (EXP_BBvar "前方車両")) (EXP_projyl (EXP_BBvar "割り込み車両"))
-      )
-    ; ( "割り込み車両に前方を譲る"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "自車線区間集合" (EXP_SBBvar "自車線区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_forall "x" (EXP_SBBvar "自車線区間集合")
-          (EXP_not
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-              (EXP_or
-                (EXP_Ilt (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間")))
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ]
-  ).
-
-Definition example_vehicle_cutting_in_hwd : Spec :=
-  ( CND (EXP_and (EXP_Bvar "前方車両がある") (EXP_Bvar "他車両がある"))
-  , [ ( "右の車線に車線変更"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "他車両集合" (EXP_SBBvar "他車両集合")
-        ; DEF_SBB "自車線左区間集合" (EXP_SBBvar "自車線左区間集合")
-        ; DEF_SBB "自車線右区間集合" (EXP_SBBvar "自車線右区間集合")
-        ; DEF_SBB "右車線変更区間集合" (EXP_SBBvar "右車線変更区間集合")
-        ]
-      , EXP_and
-          (EXP_Bvar "右車線存在確認")
-          (EXP_forall "x" (EXP_SBBvar "他車両集合")
-            (EXP_exists "y" (EXP_SBBvar "右車線変更区間集合")
-              (EXP_and
-                (EXP_not (EXP_and
-                  (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                  (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))
-                (EXP_Qgt
-                  (EXP_RAT
-                    (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                    (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合")
-                    (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                  (EXP_Q 1.0)))))
-      )
-    ; ( "左の車線に車線変更"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "他車両集合" (EXP_SBBvar "他車両集合")
-        ; DEF_SBB "自車線左区間集合" (EXP_SBBvar "自車線左区間集合")
-        ; DEF_SBB "自車線右区間集合" (EXP_SBBvar "自車線右区間集合")
-        ; DEF_SBB "左車線変更区間集合" (EXP_SBBvar "左車線変更区間集合")
-        ]
-      , EXP_and
-          (EXP_Bvar "左車線存在確認")
-          (EXP_forall "x" (EXP_SBBvar "他車両集合")
-            (EXP_exists "y" (EXP_SBBvar "左車線変更区間集合")
-              (EXP_and
-                (EXP_not (EXP_and
-                  (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                  (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))
-                (EXP_Qle
-                  (EXP_RAT
-                    (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                    (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合")
-                    (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                  (EXP_Q 1.0)))))
-      )
-    ; ( "停止"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "他車両集合" (EXP_SBBvar "他車両集合")
-        ; DEF_SBB "自車線左区間集合" (EXP_SBBvar "自車線左区間集合")
-        ; DEF_SBB "自車線右区間集合" (EXP_SBBvar "自車線右区間集合")
-        ; DEF_SBB "右車線変更区間集合" (EXP_SBBvar "右車線変更区間集合")
-        ; DEF_SBB "左車線変更区間集合" (EXP_SBBvar "左車線変更区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_and
-          (EXP_not
-            (EXP_or
-              (EXP_and
-                (EXP_Bvar "右車線存在確認")
-                (EXP_and
-                  (EXP_forall "x" (EXP_SBBvar "他車両集合")
-                    (EXP_exists "y" (EXP_SBBvar "右車線変更区間集合")
-                      (EXP_not (EXP_and
-                        (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                        (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))))
-                  (EXP_Qgt
-                    (EXP_RAT
-                      (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                      (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                    (EXP_Q 1.0))))
-              (EXP_and
-                (EXP_Bvar "左車線存在確認")
-                (EXP_and
-                  (EXP_forall "x" (EXP_SBBvar "他車両集合")
-                    (EXP_exists "y" (EXP_SBBvar "右車線変更区間集合")
-                      (EXP_not (EXP_and
-                        (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                        (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))))
-                  (EXP_Qle
-                    (EXP_RAT
-                      (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                      (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                    (EXP_Q 1.0))))))
-          (EXP_exists "x" (EXP_SBBunion (EXP_SBBvar "自車線右区間集合") (EXP_SBBvar "自車線左区間集合"))
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-              (EXP_Ilt (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間")))))
-      )
-    ; ( "減速"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "他車両集合" (EXP_SBBvar "他車両集合")
-        ; DEF_SBB "自車線左区間集合" (EXP_SBBvar "自車線左区間集合")
-        ; DEF_SBB "自車線右区間集合" (EXP_SBBvar "自車線右区間集合")
-        ; DEF_SBB "右車線変更区間集合" (EXP_SBBvar "右車線変更区間集合")
-        ; DEF_SBB "左車線変更区間集合" (EXP_SBBvar "左車線変更区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_and
-          (EXP_not
-            (EXP_or
-              (EXP_and
-                (EXP_Bvar "右車線存在確認")
-                (EXP_and
-                  (EXP_forall "x" (EXP_SBBvar "他車両集合")
-                    (EXP_exists "y" (EXP_SBBvar "右車線変更区間集合")
-                      (EXP_not (EXP_and
-                        (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                        (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))))
-                  (EXP_Qgt
-                    (EXP_RAT
-                      (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                      (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                    (EXP_Q 1.0))))
-              (EXP_and
-                (EXP_Bvar "左車線存在確認")
-                (EXP_and
-                  (EXP_forall "x" (EXP_SBBvar "他車両集合")
-                    (EXP_exists "y" (EXP_SBBvar "右車線変更区間集合")
-                      (EXP_not (EXP_and
-                        (EXP_Ioverlap (EXP_projx (EXP_BBvar "x")) (EXP_projx (EXP_BBvar "y")))
-                        (EXP_Ioverlap (EXP_projy (EXP_BBvar "x")) (EXP_projy (EXP_BBvar "y")))))))
-                  (EXP_Qle
-                    (EXP_RAT
-                      (EXP_SBBintersection (EXP_SBBvar "自車線左区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ]))
-                      (EXP_SBBintersection (EXP_SBBvar "自車線右区間集合") (EXP_makeSBB [ EXP_BBvar "割り込み車両" ])))
-                    (EXP_Q 1.0))))))
-          (EXP_and
-            (EXP_forall "x" (EXP_SBBunion (EXP_SBBvar "自車線右区間集合") (EXP_SBBvar "自車線左区間集合"))
-              (EXP_not (EXP_and
-                (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-                (EXP_Ilt (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間"))))))
-            (EXP_exists "x" (EXP_SBBunion (EXP_SBBvar "自車線右区間集合") (EXP_SBBvar "自車線左区間集合"))
-              (EXP_and
-                (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ; ( "前方車両に従う"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_BB "前方車両" (EXP_BBvar "前方車両")
-        ]
-      , EXP_Qlt (EXP_projyl (EXP_BBvar "前方車両")) (EXP_projyl (EXP_BBvar "割り込み車両"))
-      )
-    ; ( "割り込み車両に前方を譲る"
-      , [ DEF_BB "割り込み車両" (EXP_BBvar "割り込み車両")
-        ; DEF_SBB "自車線区間集合" (EXP_SBBvar "自車線区間集合")
-        ; DEF_BB "減速区間" (EXP_BBvar "減速区間")
-        ]
-      , EXP_forall "x" (EXP_SBBvar "自車線区間集合")
-          (EXP_not
-            (EXP_and
-              (EXP_Ioverlap (EXP_projx (EXP_BBvar "割り込み車両")) (EXP_projx (EXP_BBvar "x")))
-              (EXP_or
-                (EXP_Ilt (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間")))
-                (EXP_Ioverlap (EXP_projy (EXP_BBvar "割り込み車両")) (EXP_projy (EXP_BBvar "減速区間"))))))
-      )
-    ]
-  ).
-
-
-
-(******************** Comparison with IoU ********************)
-
-Definition example_ratio_relation1_2 : Spec :=
-  ( CND_None
-  , [ ( "割合の関係１(IoU=0.5の場合)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_Qeq
-          (EXP_RAT
-            (EXP_SBBintersection
-              (EXP_makeSBB [ EXP_BBvar "A" ])
-              (EXP_makeSBB [ EXP_BBvar "B" ]))
-            (EXP_SBBunion
-              (EXP_makeSBB [ EXP_BBvar "A" ])
-              (EXP_makeSBB [ EXP_BBvar "B" ])))
-          (EXP_Q 0.5)
-      )
-    ; ( "割合の関係１(IoU=0.15の場合)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_Qeq
-          (EXP_RAT
-            (EXP_SBBintersection
-              (EXP_makeSBB [ EXP_BBvar "A" ])
-              (EXP_makeSBB [ EXP_BBvar "B" ]))
-            (EXP_SBBunion
-              (EXP_makeSBB [ EXP_BBvar "A" ])
-              (EXP_makeSBB [ EXP_BBvar "B" ])))
-          (EXP_Q 0.15)
-      )
-    ]
-  ).
-
-Definition example_rational_relation3_4 : Spec :=
-  ( CND_None
-  , [ ( "割合の関係３(IoU=0.12かつAの右上の頂点とBの左下の頂点が重なっている場合)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-          (EXP_Qeq
-            (EXP_RAT
-              (EXP_SBBintersection
-                (EXP_makeSBB [ EXP_BBvar "A" ])
-                (EXP_makeSBB [ EXP_BBvar "B" ]))
-              (EXP_SBBunion
-                (EXP_makeSBB [ EXP_BBvar "A" ])
-                (EXP_makeSBB [ EXP_BBvar "B" ])))
-            (EXP_Q 0.5))
-          (EXP_and
-            (EXP_Ioverlap (EXP_projx (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))
-            (EXP_Ioverlap (EXP_projy (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B"))))
-      )
-    ; ( "割合の関係３(IoU=0.12かつAの右下の頂点とBの左上の頂点が重なっている場合)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-          (EXP_Qeq
-            (EXP_RAT
-              (EXP_SBBintersection
-                (EXP_makeSBB [ EXP_BBvar "A" ])
-                (EXP_makeSBB [ EXP_BBvar "B" ]))
-              (EXP_SBBunion
-                (EXP_makeSBB [ EXP_BBvar "A" ])
-                (EXP_makeSBB [ EXP_BBvar "B" ])))
-            (EXP_Q 0.5))
-          (EXP_and
-            (EXP_Ioverlap (EXP_projx (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))
-            (EXP_Ioverlap (EXP_projy (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B"))))
-      )
-    ]
-  ).
-
-Definition example_positional_relation1_2 : Spec :=
-  ( CND_None
-  , [ ( "位置関係１(AよりもBの方が上にある)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_Ilt (EXP_projy (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B"))
-      )
-    ; ( "位置関係１(AよりもBの方が右にある)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_Ilt (EXP_projx (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B"))
-      )
-    ]
-  ).
-
-Definition example_positional_relation3_4 : Spec :=
-  ( CND (EXP_Bvar "画像全体を取得可能")
-  , [ ( "位置関係３(BがAの左上と上の領域どちらともに位置している)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-          (EXP_Ilt (EXP_projy (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B")))
-          (EXP_Ioverlap (EXP_projx (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))
-      )
-    ; ( "位置関係４(B全体の0.3以上がAの左下に位置している)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ; DEF_BB "A左下" (EXP_makeBB
-          (EXP_makeI (EXP_projxl EXP_BBimg) (EXP_projxl (EXP_BBvar "A")))
-          (EXP_makeI (EXP_projyl EXP_BBimg) (EXP_projyl (EXP_BBvar "A"))))
-        ]
-      , EXP_Qge
-          (EXP_RAT
-            (EXP_SBBintersection
-              (EXP_makeSBB [ EXP_BBvar "A左下" ])
-              (EXP_makeSBB [ EXP_BBvar "B" ]))
-            (EXP_makeSBB [ EXP_BBvar "B" ]))
-          (EXP_Q 0.3)
-      )
-    ]
-  ).
-
-Definition example_inclusion_relation1_2 : Spec :=
-  ( CND_None
-  , [ ( "包含関係１(BがAに包含されている)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-      ]
-      , EXP_BBsupseteq (EXP_BBvar "A") (EXP_BBvar "B")
-      )
-    ; ( "包含関係２(AがBに包含されている)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-      ]
-      , EXP_BBsubseteq (EXP_BBvar "A") (EXP_BBvar "B")
-      )
-    ]
-  ).
-
-Definition example_comparison_relation1_2 : Spec :=
-  ( CND_None
-  , [ ( "大小関係１(AよりBが小さい)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-      ]
-      , EXP_Qgt
-          (EXP_RAT (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ]))
-          (EXP_Q 1.0)
-      )
-    ; ( "大小関係２(AよりBが大さい)"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-      ]
-      , EXP_Qlt
-          (EXP_RAT (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ]))
-          (EXP_Q 1.0)
-      )
-    ]
-  ).
-
-
-
-(******************** Comparison with Binary topological relationships ********************)
-
-Definition example_contains : Spec :=
-  ( CND_None
-  , [ ( "A contains B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-         (EXP_BBsupseteq (EXP_BBvar "A") (EXP_BBvar "B"))
-         (EXP_not (EXP_or
-           (EXP_Qeq (EXP_projxl (EXP_BBvar "A")) (EXP_projxl (EXP_BBvar "B")))
-           (EXP_or
-             (EXP_Qeq (EXP_projxu (EXP_BBvar "A")) (EXP_projxu (EXP_BBvar "B")))
-             (EXP_or
-               (EXP_Qeq (EXP_projyl (EXP_BBvar "A")) (EXP_projyl (EXP_BBvar "B")))
-               (EXP_Qeq (EXP_projyu (EXP_BBvar "A")) (EXP_projyu (EXP_BBvar "B")))))))
-      )
-    ; ( "A covers B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-         (EXP_BBsupseteq (EXP_BBvar "A") (EXP_BBvar "B"))
-         (EXP_or
-           (EXP_Qeq (EXP_projxl (EXP_BBvar "A")) (EXP_projxl (EXP_BBvar "B")))
-           (EXP_or
-             (EXP_Qeq (EXP_projxu (EXP_BBvar "A")) (EXP_projxu (EXP_BBvar "B")))
-             (EXP_or
-               (EXP_Qeq (EXP_projyu (EXP_BBvar "A")) (EXP_projyl (EXP_BBvar "B")))
-               (EXP_Qeq (EXP_projyl (EXP_BBvar "A")) (EXP_projyu (EXP_BBvar "B"))))))
-      )
-    ; ( "A touch B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_and
-          (EXP_Qeq
-            (EXP_RAT
-              (EXP_SBBintersection (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ]))
-              (EXP_SBBunion (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ])))
-            (EXP_Q 0))
-          (EXP_or
-            (EXP_Qeq (EXP_projxl (EXP_BBvar "A")) (EXP_projxl (EXP_BBvar "B")))
-            (EXP_or
-              (EXP_Qeq (EXP_projxu (EXP_BBvar "A")) (EXP_projxu (EXP_BBvar "B")))
-              (EXP_or
-              (EXP_Qeq (EXP_projyl (EXP_BBvar "A")) (EXP_projyl (EXP_BBvar "B")))
-              (EXP_Qeq (EXP_projyu (EXP_BBvar "A")) (EXP_projyu (EXP_BBvar "B"))))))
-      )
-    ; ( "A overlapbdyintersect B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_not (EXP_and
-          (EXP_Qeq
-            (EXP_RAT
-              (EXP_SBBintersection (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ]))
-              (EXP_makeSBB [ EXP_BBvar "B" ]))
-            (EXP_Q 1))
-          (EXP_Qeq
-            (EXP_RAT
-              (EXP_SBBintersection (EXP_makeSBB [ EXP_BBvar "A" ]) (EXP_makeSBB [ EXP_BBvar "B" ]))
-              (EXP_makeSBB [ EXP_BBvar "B" ]))
-            (EXP_Q 0)))
-      )
-    ; ( "A equal B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_BBeq (EXP_BBvar "A") (EXP_BBvar "B")
-      )
-    ; ( "A disjoint B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_not (EXP_BBoverlap (EXP_BBvar "A") (EXP_BBvar "B"))
-      )
-    ; ( "A overlapbdydisjoint B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_or
-          (EXP_and
-            (EXP_Qeq (EXP_width (EXP_projy (EXP_BBvar "B"))) (EXP_Q 0))
-            (EXP_or
-              (EXP_and
-                (EXP_Iin (EXP_projxl (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))
-                (EXP_Iin (EXP_projxu (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B"))))
-              (EXP_and
-                (EXP_Iin (EXP_projxu (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))
-                (EXP_not (EXP_Iin (EXP_projxl (EXP_BBvar "A")) (EXP_projx (EXP_BBvar "B")))))))
-          (EXP_and
-            (EXP_Qeq (EXP_width (EXP_projx (EXP_BBvar "B"))) (EXP_Q 0))
-            (EXP_or
-              (EXP_and
-                (EXP_Iin (EXP_projyl (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B")))
-                (EXP_Iin (EXP_projyu (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B"))))
-              (EXP_and
-                (EXP_Iin (EXP_projyu (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B")))
-                (EXP_not (EXP_Iin (EXP_projyl (EXP_BBvar "A")) (EXP_projy (EXP_BBvar "B")))))))
-      )
-    ; ( "A on B"
-      , [ DEF_BB "A" (EXP_BBvar "Aを返す関数")
-        ; DEF_BB "B" (EXP_BBvar "Bを返す関数")
-        ]
-      , EXP_or
-          (EXP_and
-            (EXP_Qeq (EXP_width (EXP_projy (EXP_BBvar "B"))) (EXP_Q 0))
-            (EXP_or
-              (EXP_Iinrev (EXP_projy (EXP_BBvar "B")) (EXP_projyu (EXP_BBvar "A")))
-              (EXP_Iinrev (EXP_projy (EXP_BBvar "B")) (EXP_projyl (EXP_BBvar "A")))))
-          (EXP_and
-            (EXP_Qeq (EXP_width (EXP_projx (EXP_BBvar "B"))) (EXP_Q 0))
-            (EXP_or
-              (EXP_Iinrev (EXP_projx (EXP_BBvar "B")) (EXP_projxu (EXP_BBvar "A")))
-              (EXP_Iinrev (EXP_projx (EXP_BBvar "B")) (EXP_projxl (EXP_BBvar "A")))))
-      )
-    ]
-  ).

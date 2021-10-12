@@ -1,13 +1,46 @@
 Require Import QArith Qminmax String List.
+Require Import BBSL.BBSL.
 Import ListNotations.
 
-
 Local Open Scope string_scope.
-Require Import BBSL.BBSL.
 Local Open Scope BBSL_scope.
 
 Module Export M := BBSL.M.
 
+
+(* lead vehicle stopped
+ *
+ * exfunction
+ *   // 前方車両の存在をチェック，あればtrueを返す
+ *   前方車両がある():bool
+ *   // 前方車両のbounding boxを返す
+ *   前方車両():bb
+ *   // 減速しなければならない範囲のbounding boxを返す
+ *   減速区間() bb
+ * endexfunction
+ * 
+ * condition
+ *   [前方車両がある()]
+ * endcondition
+ * 
+ * case 減速
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) ≈ PROJ_y(減速区間)
+ * endcase
+ * 
+ * case 停止
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) < PROJ_y(減速区間)
+ * endcase
+ * 
+ * case レスポンス無し
+ *   let 前方車両:bb = 前方車両(),
+ *       減速区間:bb = 減速区間()
+ *   in PROJ_y(前方車両) > PROJ_y(減速区間)
+ * endcase
+ *)
 Definition example_lead_vehicle_stopped : Spec :=
   ( CND (EXP_Bvar "前方車両がある")
   , [ ( "減速"
@@ -37,6 +70,12 @@ Definition example_lead_vehicle_stopped : Spec :=
     ]
   ).
 
+(* ∀減速区間∈BB, 前方車両∈BB,
+ *     減速区間 ≠ ∅ ∧ 前方車両 ≠ ∅ ∧ 前方車両がある ⇒
+ *         (∃(L, P)∈[[example_lead_vehicle_stopped]], P)
+ *
+ * つまり，case 減速 ∨ case 停止 ∨ case レスポンス無し
+ *)
 Proposition comprehensiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
     let evaluated := 
@@ -79,6 +118,11 @@ Proof.
   ----- rewrite H3 in H4. apply (Qlt_irrefl dec_yu H4).
 Qed.
 
+(*
+ * case 減速 ∧ ¬(case 停止 ∨ case レスポンス無し) ∨
+ * case 停止 ∧ ¬(case 減速 ∨ case レスポンス無し) ∨
+ * case レスポンス無し ∧ ¬(case 減速 ∨ case 停止)
+ *)
 Proposition exclusiveness_of_example_lead_vehicle_stopped :
   forall (exists_front : Prop) (front_bb dec : BB),
     let evaluated := 
