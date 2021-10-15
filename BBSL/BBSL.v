@@ -13,61 +13,6 @@ Local Open Scope BBSL_scope.
 
 (******************** Helpers ********************)
 
-Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
-Proof.
-  intros. split.
-  - intros. apply Qeq_sym. assumption.
-  - intros. apply Qeq_sym. assumption.
-Qed.
-
-Lemma Qgt_ge_trans : forall x y z, x > y -> y >= z -> x > z.
-Proof.
-  intros x y z H H0.
-  apply (Qle_lt_trans z y x H0 H).
-Qed.
-
-Lemma Qge_gt_trans : forall x y z, x >= y -> y > z -> x > z.
-Proof.
-  intros x y z H H0.
-  apply (Qlt_le_trans z y x H0 H).
-Qed.
-
-Lemma Qlt_asym : forall q0 q1 : Q, ~((q0 < q1)%Q /\ (q1 < q0)%Q).
-Proof.
-  unfold not. intros. destruct H.
-  q_order.
-Qed.
-
-Lemma Qmin_ltl_comm : forall q q0 q1 : Q, (Qmin q0 q1 < q)%Q <-> (Qmin q1 q0 < q)%Q.
-Proof.
-  intros.
-  rewrite (Q.min_comm q1 q0).
-  split.
-  - intros. assumption.
-  - intros. assumption.
-Qed.
-
-Lemma Qmax_ltr_comm : forall q q0 q1 : Q, (q < Qmax q0 q1)%Q <-> (q < Qmax q1 q0)%Q.
-Proof.
-  intros.
-  rewrite (Q.max_comm q1 q0).
-  split.
-  - intros. assumption.
-  - intros. assumption.
-Qed.
-
-Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
-Proof.
-  intros x y. split.
-  apply Qlt_not_le. apply Qnot_le_lt.
-Qed.
-
-Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
-Proof.
-  intros x y. split.
-  apply Qle_not_lt. apply Qnot_lt_le.
-Qed.
-
 (*
 (* use classical facts *)
 Lemma DNE : forall A, ~~A <-> A.
@@ -90,9 +35,7 @@ Proof.
   intros. destruct i0. destruct i1. simpl.
   rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
   simpl in H. unfold not in H.  destruct H.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
-  rewrite (Q.max_lt_iff q q1 q0).
-  rewrite (Q.max_lt_iff q q1 q2).
+  rewrite (Qmin_lt_max_iff q0 q2 q q1).
   split.
   - intros.
     destruct H1. destruct H1.
@@ -108,6 +51,103 @@ Proof.
 Qed.
 *)
 
+Lemma nor_nandn : forall A B, ~(A \/ B) -> ~A /\ ~B.
+Proof.
+  unfold not. intros A B H. split.
+  - intro. destruct H. now apply or_introl.
+  - intro. destruct H. now apply or_intror.
+Qed.
+
+Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
+Proof.
+  intros.
+  split. q_order. q_order.
+Qed.
+
+Lemma Qlt_asym : forall x y, ~((x < y)%Q /\ (y < x)%Q).
+Proof.
+  unfold not. intros x y H. destruct H.
+  q_order.
+Qed.
+
+Lemma Qgt_ge_trans : forall x y z, x > y -> y >= z -> x > z.
+Proof.
+  intros. q_order.
+Qed.
+
+Lemma Qge_gt_trans : forall x y z, x >= y -> y > z -> x > z.
+Proof.
+  intros. q_order.
+Qed.
+
+Lemma Qmin_ltl_comm : forall x y z, (Qmin x y < z)%Q <-> (Qmin y x < z)%Q.
+Proof.
+  intros. now rewrite Q.min_comm.
+Qed.
+
+Lemma Qmin_ltr_comm : forall x y z, (z < Qmin x y)%Q <-> (z < Qmin x y)%Q.
+Proof.
+  intros. now rewrite Q.min_comm.
+Qed.
+
+Lemma Qmin_lel_comm : forall x y z, (Qmin x y <= z)%Q <-> (Qmin y x <= z)%Q.
+Proof.
+  intros. now rewrite Q.min_comm.
+Qed.
+
+Lemma Qmin_ler_comm : forall x y z, (z <= Qmin x y)%Q <-> (z <= Qmin y x)%Q.
+Proof.
+  intros. now rewrite  Q.min_comm.
+Qed.
+
+Lemma Qmax_ltl_comm : forall x y z, (Qmax x y < z)%Q <-> (Qmax y x < z)%Q.
+Proof.
+  intros. now rewrite Q.max_comm.
+Qed.
+
+Lemma Qmax_ltr_comm : forall x y z, (z < Qmax x y)%Q <-> (z < Qmax y x)%Q.
+Proof.
+  intros. now rewrite Q.max_comm.
+Qed.
+
+Lemma Qmax_lel_comm : forall x y z, (Qmax x y <= z)%Q <-> (Qmax y x <= z)%Q.
+Proof.
+  intros. now rewrite Q.max_comm.
+Qed.
+
+Lemma Qmax_ler_comm : forall x y z, (z <= Qmax x y)%Q <-> (z <= Qmax y x)%Q.
+Proof.
+  intros. now rewrite Q.max_comm.
+Qed.
+
+Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
+Proof.
+  intros. split. q_order. q_order.
+Qed.
+
+Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
+Proof.
+  intros. split. q_order. q_order.
+Qed.
+
+Lemma Qmin_lt_max_iff : forall x y z w, (Qmin x y < Qmax z w)%Q <-> ((x < z)%Q \/ (x < w)%Q) \/ (y < z)%Q \/ (y < w)%Q.
+Proof.
+  intros.
+  now rewrite Q.min_lt_iff, Q.max_lt_iff, Q.max_lt_iff.
+Qed.
+
+Lemma Qmax_le_min_iff : forall x y z w, (Qmax x y <= Qmin z w)%Q <-> (x <= z /\ x <= w) /\ y <= z /\ y <= w.
+Proof.
+  intros x y z w.
+  now rewrite Q.max_lub_iff, Q.min_glb_iff, Q.min_glb_iff.
+Qed.
+
+Lemma Qmin_le_max_iff : forall x y z w, (Qmin x y <= Qmax z w)%Q <-> (x <= z \/ x <= w) \/ y <= z \/ y <= w.
+Proof.
+  intros.
+  now rewrite Q.min_le_iff, Q.max_le_iff, Q.max_le_iff.
+Qed.
+
 Definition option_and (a b : option Prop) : option Prop :=
     match a, b with
     | Some a, Some b => Some (a /\ b)
@@ -120,20 +160,24 @@ Definition option_or (a b : option Prop) : option Prop :=
     | _, _ => None
     end.
 
+(* TODO unnecessary? *)
+(*
 Lemma toTrue : forall P : Prop, P -> P <-> True.
 Proof.
-  intros. split.
-  intros. trivial.
-  intros. apply H.
+  now intro P.
 Qed.
+*)
 
+(*
 Lemma norn_nand : forall A B, ~A \/ ~B -> ~(A /\ B).
 Proof.
   unfold not. intros A B H. destruct H.
   intro HAandB. destruct HAandB as (HA & HB). contradiction.
   intro HAandB. destruct HAandB as (HA & HB). apply (H HB).
 Qed.
+*)
 
+(*
 Lemma or_falser : forall A : Prop, A \/ False <-> A.
 Proof.
   intros. split.
@@ -205,6 +249,7 @@ Proof.
   intros. rewrite (or_comm A B).
   revert H. revert B A. apply or_l.
 Qed.
+*)
 
 
 
@@ -214,90 +259,65 @@ Definition Interval : Type := Q * Q.
 
 Definition lower : Q * Q -> Q := fst.
 Definition upper : Q * Q -> Q := snd.
-Definition Iin (v : Q) (i : Interval) := lower i <= v <= upper i.
-Definition Inin (v : Q) (i : Interval) := v < lower i \/ upper i < v.
+Definition Iin (x : Q) (i : Interval) := lower i <= x <= upper i.
+Definition Inin (x : Q) (i : Interval) := x < lower i \/ upper i < x.
 Definition Iempty (i : Interval) := lower i > upper i.
 Definition Inempty (i :Interval) := lower i <= upper i.
 
-Lemma Iempty_not_nempty : forall i, Iempty i -> ~Inempty i.
-Proof.
-  unfold Iempty, Inempty. intros i H.
-  now apply Qlt_not_le.
-Qed.
-
-Lemma Inempty_not_empty : forall i, Inempty i -> ~Iempty i.
-Proof.
-  unfold Inempty, Iempty. intros i H.
-  now apply Qle_not_lt.
-Qed.
-
-Lemma Inot_empty_nempty : forall i, ~Iempty i -> Inempty i.
-Proof.
-  unfold Iempty, Inempty. intros i H.
-  now apply Qnot_lt_le.
-Qed.
-
-Lemma Inot_nempty_empty : forall i, ~Inempty i -> Iempty i.
-Proof.
-  unfold Iempty, Inempty. intros i H.
-  now apply Qnot_le_lt.
-Qed.
-
 Lemma Iempty_not_nempty_iff : forall i, Iempty i <-> ~Inempty i.
 Proof.
-  intros i. split.
-  apply Iempty_not_nempty. apply Inot_nempty_empty.
+  unfold Iempty, Inempty. intro.
+  split. q_order. q_order.
 Qed.
 
-Lemma Inot_empty_nempty_iff : forall i, ~Iempty i <-> Inempty i.
+Lemma Inempty_not_empty_iff : forall i, Inempty i <-> ~Iempty i.
 Proof.
-  intros i. split.
-  apply Inot_empty_nempty. apply Inempty_not_empty.
+  unfold Inempty, Iempty. intro.
+  split. q_order. q_order.
 Qed.
 
 Lemma Iempty_nempty_dec : forall i, {Iempty i} + {Inempty i}.
 Proof.
-  unfold Iempty, Inempty. intros i.
+  unfold Iempty, Inempty. intro.
   apply Qlt_le_dec.
 Qed.
 
-Lemma Inempty_empty_dec : forall i, {Inempty i} + {Iempty i}.
+Lemma Iin_not_nin_iff : forall x i, Inempty i -> Iin x i <-> ~Inin x i.
 Proof.
-  intros i.
-  elim (Iempty_nempty_dec i).
-  * now right.
-  * now left.
+  unfold Inempty, Iin, Inin. intros x i H. split.
+  - intros H0 H1. destruct H0, H1. q_order. q_order.
+  - intros H0. apply nor_nandn in H0. destruct H0.
+    split. q_order. q_order.
 Qed.
 
-Lemma Iin_not_nin : forall v i, Iin v i -> ~Inin v i.
+Lemma Inin_not_in : forall x i, Inempty i -> Inin x i -> ~Iin x i.
 Proof.
-  unfold Iin, Inin, not. intros v i H H0. destruct H as (H & H1). destruct H0 as [H0 | H0].
-  apply (Qle_not_lt (lower i) v H H0). apply (Qle_not_lt v (upper i) H1 H0).
+  unfold Inempty, Inin, Iin.
+  intros x i H H0 H1. destruct H1, H0.
+  q_order. q_order.
 Qed.
 
-Lemma Inin_not_in : forall v i, Inin v i -> ~Iin v i.
-Proof.
-  unfold Inin, Iin, not. intros v i H H0. destruct H0 as (H0 & H1). destruct H as [H | H].
-  apply (Qle_not_lt (lower i) v H0 H). apply (Qle_not_lt v (upper i) H1 H).
-Qed.
+(* Lemma Inot_in_nin : forall x i, Inempty i -> ~Iin x i -> Inin x i
+ * need classical facts
+ *)
 
 Lemma Iin_lower : forall i, Inempty i -> Iin (lower i) i.
 Proof.
-  unfold Inempty, Iin. intros i H. split.
-  apply Qle_refl. assumption.
+  unfold Inempty, Iin. intros.
+  split. apply Qle_refl. assumption.
 Qed.
 
 Lemma Iin_upper : forall i, Inempty i -> Iin (upper i) i.
 Proof.
-  unfold Inempty, Iin. intros i H. split.
-  assumption. apply Qle_refl.
+  unfold Inempty, Iin. intros.
+  split. assumption. apply Qle_refl.
 Qed.
 
 Definition width (i : Interval) := Qmax 0 (upper i - lower i).
 
-Definition Ieq (i0 i1 : Interval) := lower i0 == lower i1 /\ upper i0 == upper i1.
-Definition Ilt (i0 i1 : Interval) := upper i0 < lower i1.
-Definition Ile (i0 i1 : Interval) := upper i0 <= lower i1.
+Definition Ieq (i j : Interval) := lower i == lower j /\ upper i == upper j.
+Definition Ilt (i j : Interval) := upper i < lower j.
+Definition Ile (i j : Interval) := upper i <= lower j.
 Notation Igt a b := (Ilt b a) (only parsing).
 Notation Ige a b := (Ile b a) (only parsing).
 
@@ -308,417 +328,317 @@ Notation "x > y" := (Ilt y x)(only parsing) : BBSL_scope.
 Notation "x >= y" := (Ile y x)(only parsing) : BBSL_scope.
 Notation "x <= y <= z" := (x<=y/\y<=z) : BBSL_scope.
 
-Lemma Ieq_refl : forall x, x == x.
+Lemma Ieq_refl : forall i, i == i.
 Proof.
-  unfold Ieq. intros.
-  split. apply Qeq_refl. apply Qeq_refl.
+  unfold Ieq. intros. split. q_order. q_order.
 Qed.
 
-Lemma Ieq_sym : forall x y, x == y -> y == x.
+Lemma Ieq_sym_iff : forall i j, i == j <-> j == i.
 Proof.
-  unfold Ieq. intros. destruct H. split.
-  apply (Qeq_sym (lower x) (lower y) H).
-  apply (Qeq_sym (upper x) (upper y) H0).
+  destruct i as (il, iu), j as (jl, ju).
+  unfold Ieq. simpl.
+  now rewrite (Qeq_sym_iff jl il), (Qeq_sym_iff ju iu).
 Qed.
 
-Lemma Ieq_sym_iff : forall x y, x == y <-> y == x.
+Lemma Ieq_trans : forall i j k, i == j -> j == k -> i == k.
 Proof.
-  intros. split.
-  apply Ieq_sym. apply Ieq_sym.
+  unfold Ieq.
+  intros i j k H H0. destruct H, H0.
+  split. q_order. q_order.
 Qed.
 
-Lemma Ieq_trans : forall x y z, x == y -> y == z -> x == z.
+Lemma Ilt_antisymm : forall i j, Inempty i -> Inempty j -> i < j -> ~j < i.
 Proof.
-  unfold Ieq. intros. destruct H, H0. split.
-  apply (Qeq_trans (lower x) (lower y) (lower z) H H0).
-  apply (Qeq_trans (upper x) (upper y) (upper z) H1 H2).
-Qed.
-
-Lemma Ilt_antisymm : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Ilt i0 i1 -> ~Ilt i1 i0.
-Proof.
-  unfold Ilt. intros.
-  unfold Iempty in H. destruct H.
+  unfold Inempty, Ilt.
   q_order.
 Qed.
 
-Lemma Igt_antisymm : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Igt i0 i1 -> ~Igt i1 i0.
+Lemma Igt_antisymm : forall i j, Inempty i -> Inempty j -> i > j -> ~j > i.
 Proof.
-  intros i0 i1.
-  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
-  apply (Ilt_antisymm i1 i0).
+  unfold Inempty, Ilt.
+  q_order.
 Qed.
 
-Lemma Ilt_not_gt : forall i0 i1,
-  ~Iempty i0 /\ ~Iempty i1 -> Ilt i0 i1 -> ~Igt i0 i1.
+Lemma Ilt_not_gt : forall i j,
+  Inempty i -> Inempty j -> i < j -> ~i > j.
 Proof.
-  intros i0 i1.
-  apply (Ilt_antisymm i0 i1).
+  unfold Inempty, Ilt.
+  q_order.
 Qed.
 
-Lemma Igt_not_lt : forall i0 i1,
-  ~Iempty i0 /\ ~Iempty i1 -> Igt i0 i1 -> ~Ilt i0 i1.
+Lemma Igt_not_lt : forall i j,
+  Inempty i -> Inempty j -> i > j -> ~i < j.
 Proof.
-  intros i0 i1.
-  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
-  apply (Ilt_not_gt i1 i0).
+  unfold Inempty, Ilt.
+  q_order.
 Qed.
 
-Lemma Ile_trans : forall x y z, Inempty y -> x <= y -> y <= z -> x <= z.
+Lemma Ile_trans : forall i j k, Inempty j -> i <= j -> j <= k -> i <= k.
 Proof.
   unfold Ile, Inempty.
-  destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
-  simpl. intros.
-  apply (Qle_trans xu yu zl (Qle_trans xu yl yu H0 H) H1).
+  q_order.
 Qed.
 
-Lemma Ilt_trans : forall x y z, Inempty y -> x < y -> y < z -> x < z.
+Lemma Ilt_trans : forall i j k, Inempty j -> i < j -> j < k -> i < k.
 Proof.
   unfold Ilt, Inempty.
-  destruct x as (xl, xu). destruct y as (yl, yu). destruct z as (zl, zu).
-  simpl. intros.
-  apply (Qlt_trans xu yu zl (Qlt_le_trans xu yl yu H0 H) H1).
+  q_order.
 Qed.
 
-Lemma Ilt_irrefl : forall x, Inempty x -> ~x < x.
+Lemma Ilt_irrefl : forall i, Inempty i -> ~i < i.
 Proof.
-  unfold Ilt, Inempty. intros.
-  apply (Qle_not_lt (lower x) (upper x) H).
+  unfold Ilt, Inempty.
+  q_order.
 Qed.
 
-Definition Iintersection (i0 i1 : Interval) : Interval :=
-  (Qmax (lower i0) (lower i1), Qmin (upper i0) (upper i1)).
+Definition Iintersection (i j : Interval) : Interval :=
+  (Qmax (lower i) (lower j), Qmin (upper i) (upper j)).
 
-Definition Isubset (i0 i1 : Interval) := (lower i1 < lower i0)%Q /\ (upper i0 < upper i1)%Q.
-Definition Isubseteq (i0 i1 : Interval) := (lower i1 <= lower i0)%Q /\ (upper i0 <= upper i1)%Q.
+Definition Isubset (i j : Interval) := (lower j < lower i)%Q /\ (upper i < upper j)%Q.
+Definition Isubseteq (i j : Interval) := (lower j <= lower i)%Q /\ (upper i <= upper j)%Q.
 Notation Isupset a b := (Isubset b a) (only parsing).
 Notation Isupseteq a b := (Isubseteq b a) (only parsing).
 
 Lemma Isubseteq_refl : forall x, Isubseteq x x.
 Proof.
-  unfold Isubseteq. intros. split.
-  apply Qle_refl. apply Qle_refl.
+  unfold Isubseteq. intros.
+  split. q_order. q_order.
 Qed.
 
-Lemma Isubseteq_antisym : forall x y, Isubseteq x y /\ Isubseteq y x -> x == y.
+Lemma Isubseteq_antisym : forall x y, Isubseteq x y -> Isubseteq y x -> x == y.
 Proof.
-  unfold Isubseteq, Ieq. intros. destruct H. destruct H, H0. split.
-  apply (Qle_antisym (lower x) (lower y) H0 H).
-  apply (Qle_antisym (upper x) (upper y) H1 H2).
+  unfold Isubseteq, Ieq.
+  intros x y H H0. destruct H, H0.
+  split. q_order. q_order.
 Qed.
 
 Lemma Isubseteq_trans : forall x y z, Isubseteq x y -> Isubseteq y z -> Isubseteq x z.
 Proof.
-  unfold Isubseteq. intros. destruct H. destruct H0. split.
-  apply (Qle_trans (lower z) (lower y) (lower x) H0 H).
-  apply (Qle_trans (upper x) (upper y) (upper z) H1 H2).
+  unfold Isubseteq. intros x y z H H0.
+  destruct H as (H, H1), H0 as (H0, H2).
+  split. q_order. q_order.
 Qed.
 
 Lemma Isubseteq_intersection : forall x y,
   Isubseteq (Iintersection x y) x /\ Isubseteq (Iintersection x y) y.
 Proof.
-  unfold Iintersection, Isubseteq. simpl. intros. split.
-  - split.
-  -- rewrite (Q.max_le_iff (lower x) (lower y) (lower x)). left. apply Qle_refl.
-  -- rewrite (Q.min_le_iff (upper x) (upper y) (upper x)). left. apply Qle_refl.
-  - split.
-  -- apply (Q.max_le_iff (lower x) (lower y) (lower y)). right. apply Qle_refl.
-  -- apply (Q.min_le_iff (upper x) (upper y) (upper y)). right. apply Qle_refl.
+  unfold Iintersection, Isubseteq. intros. simpl.
+  rewrite Q.max_le_iff, Q.max_le_iff, Q.min_le_iff, Q.min_le_iff.
+  split.
+  - split. left. q_order. left. q_order.
+  - split. right. q_order. right. q_order.
 Qed.
 
 Lemma Isubset_irrefl : forall x, Inempty x -> ~Isubset x x.
 Proof.
-  unfold Isubset, Inempty, not. intros. destruct H0.
-  apply (Qlt_irrefl (lower x) H0).
+  unfold Isubset, Inempty, not.
+  intros x H H0. destruct H0.
+  q_order.
 Qed.
 
-Lemma Isubset_trans : forall i0 i1 i2, Isubset i0 i1 -> Isubset i1 i2 -> Isubset i0 i2.
+Lemma Isubset_trans : forall i j k, Isubset i j -> Isubset j k -> Isubset i k.
 Proof.
-  unfold Isubset. intros. destruct H. destruct H0. split.
-  apply (Qlt_trans (lower i2) (lower i1) (lower i0) H0 H).
-  apply (Qlt_trans (upper i0) (upper i1) (upper i2) H1 H2). 
+  unfold Isubset. intros i j k H H0. destruct H, H0.
+  split. q_order. q_order.
 Qed.
 
-Lemma Isubset_intersection_l : forall i0 i1, Isubset i0 i1 -> Iintersection i0 i1 == i0.
+Lemma Isubset_intersection_l : forall i j, Isubset i j -> Iintersection i j == i.
 Proof.
-  unfold Isubset. unfold Iintersection.
-  destruct i0. destruct i1. simpl.
-  intros. destruct H.
-  unfold Ieq. simpl. split.
-  - rewrite (Q.max_l q q1 (Qlt_le_weak q1 q H)). apply Qeq_refl.
-  - rewrite (Q.min_l q0 q2 (Qlt_le_weak q0 q2 H0)). apply Qeq_refl.
+  unfold Isubset, Iintersection, Ieq.
+  destruct i, j. simpl.
+  rewrite Q.max_l_iff, Q.min_l_iff.
+  intro H. destruct H.
+  split. q_order. q_order.
 Qed.
 
-Lemma Isupset_intersection_r : forall i0 i1, Isupset i0 i1 -> Iintersection i0 i1 == i1.
+Lemma Isupset_intersection_r : forall i j, Isupset i j -> Iintersection i j == j.
 Proof.
-  unfold Isupset. unfold Iintersection.
-  destruct i0. destruct i1. simpl.
-  intros. destruct H.
-  unfold Ieq. simpl. split.
-  - rewrite (Q.max_r q q1 (Qlt_le_weak q q1 H)). apply Qeq_refl.
-  - rewrite (Q.min_r q0 q2 (Qlt_le_weak q2 q0 H0)). apply Qeq_refl.
+  unfold Isupset, Iintersection, Ieq.
+  destruct i, j. simpl.
+  rewrite Q.min_r_iff, Q.max_r_iff.
+  intro H. destruct H.
+  split. q_order. q_order.
 Qed.
 
 Definition Idot (i : Interval) := (lower i == upper i)%Q.
 
 Lemma Iintersection_if_divided1 : forall x y, x < y -> Iempty (Iintersection x y).
 Proof.
-  unfold Iintersection, Iempty. simpl. intros.
-  rewrite (Q.min_lt_iff (upper x) (upper y) (Qmax (lower x) (lower y))).
-  rewrite (Q.max_lt_iff (lower x) (lower y) (upper x)).
-  rewrite (Q.max_lt_iff (lower x) (lower y) (upper y)).
-  left. right. unfold Ilt in H. assumption.
+  unfold Ilt, Iempty, Iintersection.
+  destruct x, y.
+  simpl.
+  rewrite Qmin_lt_max_iff.
+  intros. now left; right.
 Qed.
 
 Lemma Iintersection_if_divided2 : forall x y,
-  Inempty x /\ Inempty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
+  Inempty x -> Inempty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
 Proof.
-  unfold Iintersection, Idot, Inempty. simpl. intros. destruct H.
-  apply Q.max_l in H. apply Q.min_l in H1.
-  rewrite <- H0. rewrite Q.max_comm. rewrite H.
-  rewrite H0. rewrite H1. apply Qeq_refl.
+  unfold Inempty, Idot, Iintersection.
+  simpl. intros.
+  rewrite <- Q.max_l_iff in H. rewrite <- Q.min_l_iff in H0.
+  rewrite <- H1, Q.max_comm, H, H1, H0. q_order.
 Qed.
 
 Lemma Iintersection_if_divided3 : forall x y,
   (lower y < upper x)%Q /\ (lower x <= lower y)%Q /\ (upper x <= upper y)%Q ->
     Inempty (Iintersection x y).
 Proof.
-  unfold Iintersection, Inempty. simpl. intros.
-  destruct H. destruct H0.
-  rewrite (Q.max_lub_iff (lower x) (lower y)).
+  unfold Inempty, Iintersection.
+  simpl. intros x y H. destruct H as (H, H0), H0.
+  rewrite Q.max_lub_iff, Q.min_glb_iff, Q.min_glb_iff.
   split.
-  - rewrite (Q.min_glb_iff (upper x) (upper y)). split.
-  -- apply Qle_lteq. left.
-     apply (Qle_lt_trans (lower x) (lower y) (upper x) H0 H).
-  -- apply Qle_lteq. left.
-     apply (Qlt_le_trans (lower x) (upper x) (upper y) (Qle_lt_trans (lower x) (lower y) (upper x) H0 H) H1).
-  - rewrite (Q.min_glb_iff (upper x) (upper y)). split.
-  -- apply Qle_lteq. left. assumption.
-  -- apply Qle_lteq. left.
-     apply (Qlt_le_trans (lower y) (upper x) (upper y) H H1).
+  - split. q_order. q_order.
+  - split. q_order. q_order.
 Qed.
 
 Lemma Iintersection_if_divided4 : forall x y,
   x == y -> x == Iintersection x y /\ y == Iintersection x y.
 Proof.
-  unfold Iintersection, Ieq. simpl. intros. destruct H.
-  rewrite (Qeq_sym_iff (lower x) (Qmax (lower x) (lower y))).
-  rewrite (Q.max_l_iff (lower x) (lower y)).
-  rewrite (Qeq_sym_iff (upper x) (Qmin (upper x) (upper y))).
-  rewrite (Q.min_l_iff (upper x) (upper y)).
-  rewrite (Qeq_sym_iff (lower y) (Qmax (lower x) (lower y))).
-  rewrite (Q.max_r_iff (lower x) (lower y)).
-  rewrite (Qeq_sym_iff (upper y) (Qmin (upper x) (upper y))).
-  rewrite (Q.min_r_iff (upper x) (upper y)).
-  split. split.
-  apply Qle_lteq. right. apply Qeq_sym. assumption.
-  apply Qle_lteq. right. assumption. 
+  unfold Ieq, Iintersection.
+  simpl. intros x y H.  destruct H.
+  rewrite Qeq_sym_iff, Q.max_l_iff
+        , Qeq_sym_iff, Q.min_l_iff
+        , Qeq_sym_iff, Q.max_r_iff
+        , Qeq_sym_iff, Q.min_r_iff.
   split.
-  apply Qle_lteq. right. assumption.
-  apply Qle_lteq. right. apply Qeq_sym. assumption.
+  - split. q_order. q_order.
+  - split. q_order. q_order.
 Qed.
 
 Lemma Iintersection_if_divided5 : forall x y, Isubset x y -> Iintersection x y == x.
 Proof.
-  unfold Iintersection, Isubset, Ieq. simpl. intros. destruct H. split.
-  rewrite (Q.max_l_iff (lower x) (lower y)). rewrite Qle_lteq. left. assumption.
-  rewrite (Q.min_l_iff (upper x) (upper y)). rewrite Qle_lteq. left. assumption. 
+  unfold Isubset, Iintersection, Ieq.
+  simpl. intros x y H. destruct H.
+  rewrite Q.max_l_iff, Q.min_l_iff.
+  split. q_order. q_order.
 Qed.
 
-Lemma Iintersection_comm : forall i0 i1, Iintersection i0 i1 == Iintersection i1 i0.
+Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
 Proof.
-  unfold Iintersection.
-  intros.
-  destruct i0. destruct i1.
-  simpl. unfold Ieq. simpl.
-  rewrite (Q.max_comm q1 q).
-  rewrite (Q.min_comm q2 q0).
-  split. apply Qeq_refl. apply Qeq_refl.
+  unfold Iintersection, Ieq.
+  simpl. intros.
+  rewrite Q.max_comm, Q.min_comm.
+  split. q_order. q_order.
 Qed.
 
 Lemma Iintersection_if_divided6 : forall x y, Isubset y x -> Iintersection y x == y.
 Proof.
-  intros x y.
-  apply (Iintersection_if_divided5 y x).
+  now intros; apply Iintersection_if_divided5.
 Qed.
 
 Lemma Iintersection_if_divided7 : forall x y,
   (lower x < upper y)%Q /\ (lower y <= lower x)%Q /\ (upper y <= upper x)%Q ->
     Inempty (Iintersection y x).
 Proof.
-  intros x y.
-  apply (Iintersection_if_divided3 y x).
+  now intros; apply Iintersection_if_divided3.
 Qed.
 
 Lemma Iintersection_if_divided8 : forall x y,
-  Inempty y /\ Inempty x ->
+  Inempty y -> Inempty x ->
   (upper y == lower x)%Q -> Idot (Iintersection y x).
 Proof.
-  intros x y.
-  apply (Iintersection_if_divided2 y x).
+  now intros; apply Iintersection_if_divided2.
 Qed.
 
 Lemma Iintersection_if_divided9 : forall x y, y < x -> Iempty (Iintersection y x).
 Proof.
-  intros x y.
-  apply (Iintersection_if_divided1 y x).
+  now intros; apply Iintersection_if_divided1.
 Qed.
 
-Lemma Iempty_intersection : forall i0 i1, Iempty i0 -> Iempty (Iintersection i0 i1).
+Lemma Iempty_intersection : forall i j, Iempty i -> Iempty (Iintersection i j).
 Proof.
-  unfold Iempty. unfold Iintersection. simpl.
-  intros. destruct i0. destruct i1. simpl. simpl in H.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
-  rewrite (Q.max_lt_iff q q1 q0).
-  left. left. assumption.
+  unfold Iempty, Iintersection.
+  simpl. intros.
+  rewrite Qmin_lt_max_iff.
+  now left; left.
 Qed.
 
-Definition Ioverlap (i0 i1 : Interval) : Prop :=
-  ~Iempty (Iintersection i0 i1).
+Definition Ioverlap (i j : Interval) : Prop :=
+  Inempty (Iintersection i j).
 
-
-Lemma Ioverlap_comm : forall i0 i1, Ioverlap i0 i1 <-> Ioverlap i1 i0.
+Lemma Ioverlap_comm : forall i j, Ioverlap i j <-> Ioverlap j i.
 Proof.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not. simpl.
-  intros. destruct i0. destruct i1. simpl. split.
-  - intros.
-    rewrite (Qmin_ltl_comm (Qmax q1 q) q2 q0) in H0.
-    rewrite (Qmax_ltr_comm (Qmin q0 q2) q1 q) in H0.
-    apply H.
-    assumption.
-  - intros.
-    rewrite (Qmin_ltl_comm (Qmax q q1) q0 q2) in H0.
-    rewrite (Qmax_ltr_comm (Qmin q2 q0) q q1) in H0.
-    apply H.
-    assumption.
+  unfold Ioverlap, Inempty, Iintersection.
+  intros. simpl. split.
+  - now rewrite Qmax_lel_comm, Qmin_ler_comm.
+  - now rewrite Qmax_lel_comm, Qmin_ler_comm.
 Qed.
 
-Lemma Ilt_not_overlap : forall i0 i1,
-  Ilt i0 i1 -> ~Ioverlap i0 i1.
+Lemma Ilt_not_overlap : forall i j,
+  i < j -> ~Ioverlap i j.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
-  intros. destruct i0. destruct i1. simpl in H0. simpl in H.
-  destruct H0.
-  rewrite (Q.max_lt_iff q q1 (Qmin q0 q2)).
-  rewrite (Q.min_lt_iff q0 q2 q1).
-  right. left.
-  assumption.
+  unfold Ilt, Ioverlap, Inempty, Iintersection.
+  destruct i, j. simpl.
+  rewrite Q.max_lub_iff, Q.min_glb_iff, Q.min_glb_iff.
+  intros H H0. destruct H0 as (H0, H1), H0, H1.
+  q_order.
 Qed.
 
-Lemma Igt_not_overlap : forall i0 i1,
-  Igt i0 i1 -> ~Ioverlap i0 i1.
+Lemma Igt_not_overlap : forall i j,
+  i > j -> ~Ioverlap i j.
 Proof.
-  intros i0 i1.
-  rewrite (Ioverlap_comm i0 i1).
-  apply (Ilt_not_overlap i1 i0).
+  intros. rewrite Ioverlap_comm. now apply Ilt_not_overlap.
 Qed.
 
-Lemma Ioverlap_not_lt : forall i0 i1, Ioverlap i0 i1 -> ~Ilt i0 i1.
+Lemma Ioverlap_not_lt : forall i j, Ioverlap i j -> ~i < j.
 Proof.
-  unfold Ilt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not.
-  intros. destruct i0. destruct i1. simpl in H. simpl in H0.
-  destruct H.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)).
-  rewrite (Q.max_lt_iff q q1 q0).
-  left. right.
-  assumption.
+  unfold Ioverlap, Inempty, Iintersection, Ilt.
+  destruct i, j. simpl.
+  rewrite Qmax_le_min_iff.
+  intros H H0. destruct H as (H, H1), H, H1.
+  q_order.
 Qed.
 
-Lemma Ioverlap_not_gt : forall i0 i1, Ioverlap i0 i1 -> ~Igt i0 i1.
+Lemma Ioverlap_not_gt : forall i j, Ioverlap i j -> ~i > j.
 Proof.
-  intros i0 i1.
-  rewrite (Ioverlap_comm i0 i1).
-  apply (Ioverlap_not_lt i1 i0).
+  intros i j.
+  rewrite Ioverlap_comm.
+  now apply Ioverlap_not_lt.
 Qed.
 
-
-Lemma not_lt_gt_overlap : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ilt i0 i1 /\ ~Igt i0 i1 -> Ioverlap i0 i1.
+Lemma not_lt_gt_overlap : forall i j, Inempty i -> Inempty j -> ~i < j /\ ~i > j -> Ioverlap i j.
 Proof.
-  unfold Ilt. unfold Igt. unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold not. simpl.
-  intros.
-  destruct i0. destruct i1. simpl in H.  simpl in H0. simpl in H1.
-  destruct H. destruct H0.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)) in H1.
-  rewrite (Q.max_lt_iff q q1 q0) in H1.
-  rewrite (Q.max_lt_iff q q1 q2) in H1.
-  destruct H1. destruct H1.
-  contradiction.
-  contradiction.
-  destruct H1. contradiction. contradiction.
+  unfold Ilt, Ioverlap,Inempty, Iintersection.
+  destruct i, j. simpl.
+  rewrite Qmax_le_min_iff.
+  intros H H0 H1. destruct H1.
+  split.
+  - split. q_order. q_order.
+  - split. q_order. q_order.
 Qed.
 
-Lemma Ilt_overlap_gt : forall i0 i1,
-  Inempty i0 /\ Inempty i1 ->
-    Ilt i0 i1 \/Ioverlap i0 i1 \/ Igt i0 i1.
-Proof.
-  unfold Ioverlap. unfold Ilt. unfold Igt. unfold Iempty. unfold Inempty. unfold Iintersection. unfold not. simpl.
-  destruct i0 as (i0l, i0u). destruct i1 as (i1l, i1u). simpl.
-  rewrite (Q.min_lt_iff i0u i1u (Qmax i0l i1l)).
-  rewrite (Q.max_lt_iff i0l i1l i0u).
-  rewrite (Q.max_lt_iff i0l i1l i1u).
-  intros. destruct H.
-  destruct (Qlt_le_dec i0u i1l).
-  - left. assumption.
-  - destruct (Qlt_le_dec i1u i0l).
-  -- right. right. assumption.
-  -- right. left. intros. destruct H1. destruct H1.
-  --- apply (Qle_lteq i0l i0u) in H. destruct H.
-  ---- apply (Qlt_asym i0l i0u (conj H H1)). 
-  ---- rewrite H in H1. apply (Qlt_irrefl i0u H1).
-  --- apply (Qle_lteq i1l i0u) in q. destruct q.
-  ---- apply (Qlt_asym i0u i1l (conj H1 H2)).
-  ---- rewrite H2 in H1. apply (Qlt_irrefl i0u H1).
-  --- destruct H1.
-  ---- apply (Qle_lteq i0l i1u) in q0. destruct q0.
-  ----- apply (Qlt_asym i0l i1u (conj H2 H1)).
-  ----- rewrite H2 in H1. apply (Qlt_irrefl i1u H1).
-  ---- apply (Qle_lteq i1l i1u) in H0. destruct H0.
-  ----- apply (Qlt_asym i1l i1u (conj H0 H1)).
-  ----- rewrite H0 in H1. apply (Qlt_irrefl i1u H1).
-Qed. 
-    
 Lemma Isubset_overlap :
-  forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Isubset i0 i1 -> Ioverlap i0 i1.
+  forall i j, Inempty i -> Inempty j -> Isubset i j -> Ioverlap i j.
 Proof.
-  unfold Ioverlap. unfold Isubset. unfold Iintersection. unfold Iempty. unfold not. simpl.
-  intros. destruct i0. destruct i1. simpl in H. simpl in H0. simpl in H1.
-  destruct H. destruct H0.
-  rewrite (Q.min_lt_iff q0 q2 (Qmax q q1)) in H1.
-  rewrite (Q.max_lt_iff q q1 q0) in H1.
-  rewrite (Q.max_lt_iff q q1 q2) in H1.
-  destruct H1. destruct H1.
-  contradiction.
-  apply (H (Qlt_trans q0 q1 q H1 H0)). 
-  destruct H1. apply (H (Qlt_trans q0 q2 q H3 H1)).
-  contradiction.
+  unfold Isubset, Ioverlap, Inempty, Iintersection.
+  destruct i, j. simpl.
+  rewrite Qmax_le_min_iff.
+  intros H H0 H1. destruct H1.
+  split.
+  - split. q_order. q_order.
+  - split. q_order. q_order.
 Qed.
 
 Lemma Isupset_overlap :
-  forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> Isupset i0 i1 -> Ioverlap i0 i1.
+  forall i j, Inempty i -> Inempty j -> Isupset i j -> Ioverlap i j.
 Proof.
-  intros i0 i1.
-  rewrite (Ioverlap_comm i0 i1).
-  rewrite (and_comm (~Iempty i0) (~Iempty i1)).
-  apply (Isubset_overlap i1 i0).
+  intros. rewrite Ioverlap_comm. now apply Isubset_overlap.
 Qed.
 
 Lemma Ilt_overlap_gt_dec : forall x y, Inempty x -> Inempty y -> {x < y} + {Ioverlap x y} + {x > y}.
 Proof.
-  unfold Inempty, Ilt, Ioverlap, Iempty, Iintersection, not.
-  intros x y H H0. destruct x as (xl, xu). destruct y as (yl, yu).
-  simpl in H, H0. simpl.
+  unfold Ilt, Ioverlap, Inempty, Iintersection.
+  destruct x as (xl, xu), y as (yl, yu). simpl. intros.
   destruct (Qlt_le_dec xu yl).
-  - left. left. assumption.
+  - now left; left.
   - destruct (Qlt_le_dec yu xl).
-  -- right. assumption.
+  -- right. q_order.
   -- left. right.
-     rewrite (Q.min_lt_iff xu yu (Qmax xl yl)).
-     rewrite (Q.max_lt_iff xl yl xu). rewrite (Q.max_lt_iff xl yl yu).
-     intros. destruct H1. destruct H1.
-  --- apply (Qlt_irrefl xu (Qlt_le_trans xu xl xu H1 H)).
-  --- apply (Qlt_irrefl yl (Qle_lt_trans yl xu yl q H1)).
-  --- destruct H1.
-  ---- apply (Qlt_irrefl yu (Qlt_le_trans yu xl yu H1 q0)).
-  ---- apply (Qlt_irrefl yu (Qlt_le_trans yu yl yu H1 H0)).
+     rewrite Qmax_le_min_iff.
+     split.
+  --- split. q_order. q_order.
+  --- split. q_order. q_order.
 Qed.
 
 
@@ -727,129 +647,120 @@ Qed.
 
 Definition BB : Type := Interval * Interval.
 
-Definition projx (bb : BB) : Interval :=
-  match bb with
-  | (x, _) => x
+Definition projx (p : BB) : Interval :=
+  match p with
+  | (px, _) => px
   end.
 
-Definition projy (bb : BB) : Interval :=
-  match bb with
-  | (_, y) => y
+Definition projy (p : BB) : Interval :=
+  match p with
+  | (_, py) => py
   end.
 
-Definition projxl (bb : BB) : Q :=
-  lower (projx bb).
+Definition projxl (p : BB) : Q :=
+  lower (projx p).
 
-Definition projxu (bb : BB) : Q :=
-  upper (projx bb).
+Definition projxu (p : BB) : Q :=
+  upper (projx p).
 
-Definition projyl (bb : BB) : Q :=
-  lower (projy bb).
+Definition projyl (p : BB) : Q :=
+  lower (projy p).
 
-Definition projyu (bb : BB) : Q :=
-  upper (projy bb).
+Definition projyu (p : BB) : Q :=
+  upper (projy p).
 
-Definition BBempty (bb : BB) : Prop :=
-  Iempty (projx bb) /\ Iempty (projy bb).
+Definition BBempty (p : BB) : Prop :=
+  Iempty (projx p) \/ Iempty (projy p).
 
-Definition BBnempty (bb : BB) : Prop :=
-  Inempty (projx bb) /\ Inempty (projy bb).
+Definition BBnempty (p : BB) : Prop :=
+  Inempty (projx p) /\ Inempty (projy p).
 
-Definition BBeq (bb0 bb1 : BB) : Prop :=
-  Ieq (projx bb0) (projx bb1) /\ Ieq (projy bb0) (projy bb1).
+Definition BBeq (p q : BB) : Prop :=
+  projx p == projx q /\ projy p == projy q.
 
 Infix "==" := BBeq (at level 70, no associativity) : BBSL_scope.
 
-Lemma BBeq_refl : forall x, x == x.
+Lemma BBeq_refl : forall p, p == p.
 Proof.
   unfold BBeq. intros. split.
   apply Ieq_refl. apply Ieq_refl.
 Qed.
 
-Lemma BBeq_sym : forall x y, x == y -> y == x.
+Lemma BBeq_sym_iff : forall p q, p == q <-> q == p.
 Proof.
-  unfold BBeq. intros. destruct H. split.
-  apply (Ieq_sym (projx x) (projx y) H).
-  apply (Ieq_sym (projy x) (projy y) H0).
+  unfold BBeq. destruct p as (px, py), q as (qx, _qy). simpl.
+  now rewrite (Ieq_sym_iff qx px), (Ieq_sym_iff _qy py).
 Qed.
 
-Lemma BBeq_sym_iff : forall x y, x == y <-> y == x.
+Lemma BBeq_trans : forall p q r, p == q -> q == r -> p == r.
 Proof.
+  unfold BBeq. destruct p as (px, py), q as (qx, _qy), r as (rx, ry). simpl.
+  intros H H0. destruct H, H0. split.
+  - apply (Ieq_trans px qx rx H H0).
+  - apply (Ieq_trans py _qy ry H1 H2). 
+Qed.
+
+Definition BBoverlap (p q : BB) : Prop :=
+  Ioverlap (projx p) (projx q) /\ Ioverlap (projy p) (projy q).
+
+Definition BBsubset (p q : BB) :=
+  Isubset (projx p) (projx q) /\ Isubset (projy p) (projy q).
+Definition BBsubseteq (p q : BB) :=
+  Isubseteq (projx p) (projx q) /\ Isubseteq (projy p) (projy q).
+Notation BBsupset p q := (BBsubset q p) (only parsing).
+Notation BBsupseteq p q := (BBsubseteq q p) (only parsing).
+
+Lemma BBsubseteq_refl : forall p, BBsubseteq p p.
+Proof.
+  unfold BBsubseteq.
+  split. apply Isubseteq_refl. apply Isubseteq_refl.
+Qed.
+
+Lemma BBsubseteq_antisym : forall p q, BBsubseteq p q -> BBsubseteq q p -> p == q.
+Proof.
+  unfold BBsubseteq, BBeq. destruct p, q. simpl.
   intros. split.
-  apply BBeq_sym. apply BBeq_sym.
+  - now apply Isubseteq_antisym.
+  - now apply Isubseteq_antisym.
 Qed.
 
-Lemma BBeq_trans : forall x y z, x == y -> y == z -> x == z.
+Lemma BBsubseteq_trans : forall p q c, BBsubseteq p q -> BBsubseteq q c -> BBsubseteq p c.
 Proof.
-  unfold BBeq. intros. destruct H. destruct H0. split.
-  apply (Ieq_trans (projx x) (projx y) (projx z) H H0).
-  apply (Ieq_trans (projy x) (projy y) (projy z) H1 H2).
+  unfold BBsubseteq. destruct p as (px, py), q as (qx, _qy), c as (cx, cy). simpl.
+  intros H H0. destruct H as (H, H1), H0 as (H0, H2). split.
+  - apply (Isubseteq_trans px qx cx H H0).
+  - apply (Isubseteq_trans py _qy cy H1 H2).
 Qed.
 
-Definition BBoverlap (bb0 bb1 : BB) : Prop :=
-  Ioverlap (projx bb0) (projx bb1) /\ Ioverlap (projy bb0) (projy bb1).
-
-Definition BBsubset (bb0 bb1 : BB) :=
-  Isubset (projx bb0) (projx bb1) /\ Isubset (projy bb0) (projy bb1).
-Definition BBsubseteq (bb0 bb1 : BB) :=
-  Isubseteq (projx bb0) (projx bb1) /\ Isubseteq (projy bb0) (projy bb1).
-Notation BBsupset a b := (BBsubset b a) (only parsing).
-Notation BBsupseteq a b := (BBsubseteq b a) (only parsing).
-
-Lemma BBsubseteq_refl : forall x, BBsubseteq x x.
-Proof.
-  unfold BBsubseteq. intros. split.
-  apply Isubseteq_refl. apply Isubseteq_refl.
-Qed.
-
-Lemma BBsubseteq_antisym : forall a b, BBsubseteq a b /\ BBsubseteq b a -> a == b.
-Proof.
-  unfold BBsubseteq. destruct a as (ax, ay). destruct b as (bx, _by). unfold BBeq.
-  simpl. intros. destruct H. destruct H, H0. split.
-  apply (Isubseteq_antisym ax bx (conj H H0)).
-  apply (Isubseteq_antisym ay _by (conj H1 H2)).
-Qed.
-
-Lemma BBsubseteq_trans : forall x y z, BBsubseteq x y -> BBsubseteq y z -> BBsubseteq x z.
-Proof.
-  unfold BBsubseteq, BBnempty. intros. destruct H. destruct H0. split.
-  apply (Isubseteq_trans (projx x) (projx y) (projx z) H H0).
-  apply (Isubseteq_trans (projy x) (projy y) (projy z) H1 H2).
-Qed.
-
-Definition BBintersection (bb0 bb1 : BB) : BB :=
-  (Iintersection (projx bb0) (projx bb1), Iintersection (projy bb0) (projy bb1)).
+Definition BBintersection (p q : BB) : BB :=
+  (Iintersection (projx p) (projx q), Iintersection (projy p) (projy q)).
 
 Lemma BBsubseteq_intersection : forall p q,
   BBsubseteq (BBintersection p q) p /\ BBsubseteq (BBintersection p q) q.
 Proof.
-  unfold BBsubseteq, BBintersection. destruct p as (px, py). destruct q as (qx, qy).
-  simpl.
-  apply and_assoc.
-  rewrite (and_comm (Isubseteq (Iintersection py qy) py) (Isubseteq (Iintersection px qx) qx /\ Isubseteq (Iintersection py qy) qy)).
-  rewrite (and_assoc (Isubseteq (Iintersection px qx) qx) (Isubseteq (Iintersection py qy) qy) (Isubseteq (Iintersection py qy) py)).
-  rewrite <- (and_assoc (Isubseteq (Iintersection px qx) px) (Isubseteq (Iintersection px qx) qx) (Isubseteq (Iintersection py qy) qy /\ Isubseteq (Iintersection py qy) py)).
+  unfold BBsubseteq, BBintersection.
+  destruct p, q. simpl.
   split.
-  apply (Isubseteq_intersection px qx).
-  apply and_comm.
-  apply (Isubseteq_intersection py qy).
+  - split. apply Isubseteq_intersection. apply Isubseteq_intersection.
+  - split. apply Isubseteq_intersection. apply Isubseteq_intersection.
 Qed.
 
-Lemma BBsubset_irrefl : forall x, BBnempty x -> ~BBsubset x x.
+Lemma BBsubset_irrefl : forall p, BBnempty p -> ~BBsubset p p.
 Proof.
-  unfold BBsubset, BBnempty, not. intros. destruct H, H0.
-  apply (Isubset_irrefl (projx x) H H0).
+  unfold BBnempty, BBsubset. destruct p as (px, py). simpl.
+  intros H H0. destruct H, H0.
+  apply (Isubset_irrefl px H H0).
 Qed.
 
-Lemma BBsubset_trans : forall x y z, BBsubset x y -> BBsubset y z -> BBsubset x z.
+Lemma BBsubset_trans : forall p q r, BBsubset p q -> BBsubset q r -> BBsubset p r.
 Proof.
-  unfold BBsubset. intros. destruct H. destruct H0. split.
-  apply (Isubset_trans (projx x) (projx y) (projx z) H H0).
-  apply (Isubset_trans (projy x) (projy y) (projy z) H1 H2).
+  unfold BBsubset. destruct p as (px, py), q as (qx, _qy), r as (rx, ry). simpl.
+  intros H H0. destruct H, H0.
+  split. apply (Isubset_trans px qx rx H H0). apply (Isubset_trans py _qy ry H1 H2).
 Qed.
 
-Definition BBarea (bb : BB) : Q :=
-  width (projx bb) * width (projy bb).
+Definition BBarea (p : BB) : Q :=
+  width (projx p) * width (projy p).
 
 
 
@@ -858,41 +769,38 @@ Definition BBarea (bb : BB) : Q :=
 Definition SetBB : Type := list BB.
 
 (* TODO: filter empty BB for efficiency *)
-Fixpoint _BB_SBBintersection (bb : BB) (sbb accum : SetBB) : SetBB :=
-  match sbb with
+Fixpoint _BB_SBBintersection (p : BB) (ps accum : SetBB) : SetBB :=
+  match ps with
   | nil => accum
-  | cons bb' sbb' => _BB_SBBintersection bb sbb' (cons (BBintersection bb bb') accum)
+  | cons q qs => _BB_SBBintersection p qs (cons (BBintersection p q) accum)
   end.
 
-Fixpoint _SBBintersection (sbb0 sbb1 accum : SetBB) : SetBB :=
-  match sbb0 with
+Fixpoint _SBBintersection (ps qs accum : SetBB) : SetBB :=
+  match ps with
   | nil => accum
-  | cons bb sbb => _SBBintersection sbb sbb1 (_BB_SBBintersection bb sbb1 nil ++ accum)
+  | cons p ps' => _SBBintersection ps' qs (_BB_SBBintersection p qs nil ++ accum)
   end.
 
-Definition SBBintersection (sbb0 sbb1 : SetBB) : SetBB :=
-  _SBBintersection sbb0 sbb1 nil.
+Definition SBBintersection (ps qs : SetBB) : SetBB :=
+  _SBBintersection ps qs nil.
 
-Definition SBBunion (sbb0 sbb1 : SetBB) : SetBB :=
-  sbb0 ++ sbb1.
+Definition SBBunion (ps qs : SetBB) : SetBB :=
+  ps ++ qs.
 
-Definition BB2area (bb0 bb1 : BB) : Q :=
-  BBarea bb0 + BBarea bb1 - BBarea (BBintersection bb0 bb1).
-
-Fixpoint _SetBBarea (sbb accum : SetBB) (area : Q) : Q :=
-  match sbb with
+Fixpoint _SetBBarea (ps accum : SetBB) (area : Q) : Q :=
+  match ps with
   | nil => area
-  | cons bb sbb' =>
-    let sbb'' := _BB_SBBintersection bb accum nil in
-    let sbb''area := List.fold_right Qplus 0 (List.map BBarea sbb'') in
-    _SetBBarea sbb' (cons bb accum) (area + BBarea bb - sbb''area)
+  | cons p qs =>
+    let cs := _BB_SBBintersection p accum nil in
+    let csarea := List.fold_right Qplus 0 (List.map BBarea cs) in
+    _SetBBarea qs (cons p accum) (area + BBarea p - csarea)
   end.
 
-Definition SetBBarea (sbb : SetBB) : Q :=
-  _SetBBarea sbb nil 0.
+Definition SetBBarea (ps : SetBB) : Q :=
+  _SetBBarea ps nil 0.
 
-Definition RAT (sbb0 sbb1 : SetBB) : Q :=
-  SetBBarea sbb0 / SetBBarea sbb1.
+Definition RAT (ps qs : SetBB) : Q :=
+  SetBBarea ps / SetBBarea qs.
 
 
 
@@ -900,48 +808,48 @@ Definition RAT (sbb0 sbb1 : SetBB) : Q :=
 
 (* Set of bounding box *)
 Inductive SBBexp : Set :=
-  | EXP_SBBvar (x : string)
-  | EXP_SBBintersection (sbb0 sbb1 : SBBexp) | EXP_SBBunion (sbb0 sbb1 : SBBexp)
-  | EXP_makeSBB (bbs : list BBexp)
+  | EXP_SBBvar (s : string)
+  | EXP_SBBintersection (ps qs : SBBexp) | EXP_SBBunion (ps qs : SBBexp)
+  | EXP_makeSBB (ps : list BBexp)
 (* Bouding box *)
 with BBexp : Set :=
-  | EXP_BBvar (x : string)
-  | EXP_makeBB (x y : Iexp)
+  | EXP_BBvar (s : string)
+  | EXP_makeBB (i j : Iexp)
   (* 画像全体のBB *)
   | EXP_BBimg
 (* Interval *)
 with Iexp : Set :=
-  | EXP_Ivar (x : string)
-  | EXP_projx (bb : BBexp) | EXP_projy (bb : BBexp)
-  | EXP_Iintersection (i0 i1 : Iexp)
-  | EXP_makeI (l u : Qexp)
+  | EXP_Ivar (s : string)
+  | EXP_projx (p : BBexp) | EXP_projy (p : BBexp)
+  | EXP_Iintersection (i j : Iexp)
+  | EXP_makeI (x y : Qexp)
 (* Rational number *)
 with Qexp : Set :=
-  | EXP_Q (a: Q)
-  | EXP_Qvar (x : string)
-  | EXP_width (i : Iexp) | EXP_RAT (sbb0 sbb1 : SBBexp)
+  | EXP_Q (x: Q)
+  | EXP_Qvar (s : string)
+  | EXP_width (i : Iexp) | EXP_RAT (ps qs : SBBexp)
   | EXP_projl (i : Iexp) | EXP_proju (i : Iexp)
-  | EXP_projxl (bb : BBexp) | EXP_projxu (bb : BBexp)
-  | EXP_projyl (bb : BBexp) | EXP_projyu (bb : BBexp).
+  | EXP_projxl (p : BBexp) | EXP_projxu (p : BBexp)
+  | EXP_projyl (p : BBexp) | EXP_projyu (p : BBexp).
 
 (* Boolean *)
 Inductive Bexp : Set :=
-  | EXP_Bvar (x : string)
-  | EXP_not (b : Bexp) | EXP_and (b0 b1 : Bexp) | EXP_or (b0 b1 : Bexp)
-  | EXP_BBeq (bb0 bb1 : BBexp)
-  | EXP_BBoverlap (bb0 bb1 : BBexp)
-  | EXP_BBsubset (bb0 bb1 : BBexp) | EXP_BBsupset (bb0 bb1 : BBexp)
-  | EXP_BBsubseteq (bb0 bb1 : BBexp) | EXP_BBsupseteq (bb0 bb1 : BBexp)
-  | EXP_Ilt (i0 i1 : Iexp) | EXP_Igt (i0 i1 : Iexp) | EXP_Ieq (i0 i1 : Iexp)
-  | EXP_Ioverlap (i0 i1 : Iexp)
-  | EXP_Iin (q : Qexp) (i : Iexp) | EXP_Iinrev (i : Iexp) (q : Qexp)
-  | EXP_Isubset (i0 i1 : Iexp) | EXP_Isupset (i0 i1 : Iexp)
-  | EXP_Isubseteq (i0 i1 : Iexp) | EXP_Isupseteq (i0 i1 : Iexp)
-  | EXP_Qlt (q0 q1 : Qexp) | EXP_Qgt (q0 q1 : Qexp) 
-  | EXP_Qeq (q0 q1 : Qexp)
-  | EXP_Qle (q0 q1 : Qexp) | EXP_Qge (q0 q1 : Qexp) 
-  | EXP_forall (bound : string) (sbb : SBBexp) (b : Bexp)
-  | EXP_exists (bound : string) (sbb : SBBexp) (b : Bexp).
+  | EXP_Bvar (s : string)
+  | EXP_not (a : Bexp) | EXP_and (a b : Bexp) | EXP_or (a b : Bexp)
+  | EXP_BBeq (p q : BBexp)
+  | EXP_BBoverlap (p q : BBexp)
+  | EXP_BBsubset (p q : BBexp) | EXP_BBsupset (p q : BBexp)
+  | EXP_BBsubseteq (p q : BBexp) | EXP_BBsupseteq (p q : BBexp)
+  | EXP_Ilt (i j : Iexp) | EXP_Igt (i j : Iexp) | EXP_Ieq (i j : Iexp)
+  | EXP_Ioverlap (i j : Iexp)
+  | EXP_Iin (x : Qexp) (i : Iexp) | EXP_Iinrev (i : Iexp) (x : Qexp)
+  | EXP_Isubset (i j : Iexp) | EXP_Isupset (i j : Iexp)
+  | EXP_Isubseteq (i j : Iexp) | EXP_Isupseteq (i j : Iexp)
+  | EXP_Qlt (x y : Qexp) | EXP_Qgt (x y : Qexp) 
+  | EXP_Qeq (x y : Qexp)
+  | EXP_Qle (x y : Qexp) | EXP_Qge (x y : Qexp) 
+  | EXP_forall (bound : string) (ps : SBBexp) (a : Bexp)
+  | EXP_exists (bound : string) (ps : SBBexp) (a : Bexp).
 
 
 
@@ -950,14 +858,14 @@ Inductive Bexp : Set :=
 (* Condition block *)
 Inductive Cond : Set :=
   | CND_None
-  | CND (b : Bexp).
+  | CND (a : Bexp).
 
 Inductive Def : Set :=
-  | DEF_SBB (x : string) (sbb : SBBexp)
-  | DEF_BB (x : string) (bb : BBexp)
-  | DEF_I (x : string) (i : Iexp)
-  | DEF_Q (x : string) (q : Qexp)
-  | DEF_B (x : string) (b : Bexp).
+  | DEF_SBB (s : string) (ps : SBBexp)
+  | DEF_BB (s : string) (p : BBexp)
+  | DEF_I (s : string) (i : Iexp)
+  | DEF_Q (s : string) (x : Qexp)
+  | DEF_B (s : string) (a : Bexp).
 
 (* Case block *)
 Definition Case : Set := string * list Def * Bexp.
@@ -972,8 +880,8 @@ Definition Spec : Set := Cond * list Case.
 Module Import M := FMapList.Make(String_as_OT).
 
 Inductive Value : Type :=
-  | Vb (x : Prop) | Vq (x : Q) | Vi (x : Interval)
-  | Vbb (x : BB) | Vsbb (x : SetBB).
+  | Vb (A : Prop) | Vq (x : Q) | Vi (i : Interval)
+  | Vbb (p : BB) | Vsbb (ps : SetBB).
 
 (* Environment: a set of string(a variable name) and value pairs  *)
 Definition Env := M.t Value.
@@ -983,43 +891,43 @@ Fixpoint Asbb (expr : SBBexp) (env : Env) : option SetBB :=
   match expr with
   | EXP_SBBvar s =>
     match find s env with
-    | Some (Vsbb sbb) => Some sbb
+    | Some (Vsbb ps) => Some ps
     | _ => None
     end
-  | EXP_SBBintersection sbb_expr0 sbb_expr1 =>
-    match Asbb sbb_expr0 env, Asbb sbb_expr1 env with
-    | Some sbb0, Some sbb1 => Some (SBBintersection sbb0 sbb1)
+  | EXP_SBBintersection expr_ps expr_qs =>
+    match Asbb expr_ps env, Asbb expr_qs env with
+    | Some ps, Some qs => Some (SBBintersection ps qs)
     | _, _ => None
     end
-  | EXP_SBBunion sbb_expr0 sbb_expr1 =>
-    match Asbb sbb_expr0 env, Asbb sbb_expr1 env with
-    | Some sbb0, Some sbb1 => Some (SBBunion sbb0 sbb1)
+  | EXP_SBBunion expr_ps expr_qs =>
+    match Asbb expr_ps env, Asbb expr_qs env with
+    | Some ps, Some qs => Some (SBBunion ps qs)
     | _, _ => None
     end
-  | EXP_makeSBB bb_exprs =>
-    List.fold_left (fun obbs obb =>
-      match obbs, obb with
-      | Some bbs, Some bb => Some (cons bb bbs)
+  | EXP_makeSBB expr_ps =>
+    List.fold_left (fun option_ps option_p =>
+      match option_ps, option_p with
+      | Some ps, Some p => Some (cons p ps)
       | _, _ => None
       end
-    ) (List.map (fun bb_expr => Abb bb_expr env) bb_exprs) (Some nil)
+    ) (List.map (fun expr_p => Abb expr_p env) expr_ps) (Some nil)
   end
 (* Bounding box *)
 with Abb (expr : BBexp) (env : Env) : option BB :=
   match expr with
   | EXP_BBimg =>
     match find "IMG" env with
-    | Some (Vbb bb) => Some bb
+    | Some (Vbb p) => Some p
     | _ => None
     end
   | EXP_BBvar s =>
     match find s env with
-    | Some (Vbb bb) => Some bb
+    | Some (Vbb p) => Some p
     | _ => None
     end
-  | EXP_makeBB i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (i0, i1)
+  | EXP_makeBB expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (i, j)
     | _, _ => None
     end
   end
@@ -1031,74 +939,74 @@ with Ai (expr : Iexp) (env : Env) : option Interval :=
     | Some (Vi i) => Some i
     | _ => None
     end
-  | EXP_projx bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projx bb)
+  | EXP_projx expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projx p)
     | None => None
     end
-  | EXP_projy bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projy bb)
+  | EXP_projy expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projy p)
     | None => None
     end
-  | EXP_Iintersection i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Iintersection i0 i1)
+  | EXP_Iintersection expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Iintersection i j)
     | _, _ => None
     end
-  | EXP_makeI q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0, q1)
+  | EXP_makeI expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x, y)
     | _, _ => None
     end
   end
 (* Rational number *)
 with Aq (expr : Qexp) (env : Env) : option Q :=
   match expr with
-  | EXP_Q a => Some a
+  | EXP_Q x => Some x
   | EXP_Qvar s =>
     match find s env with
-    | Some (Vq q) => Some q
+    | Some (Vq x) => Some x
     | _ => None
     end
-  | EXP_width i_expr =>
-    match Ai i_expr env with
+  | EXP_width expr_i =>
+    match Ai expr_i env with
     | Some i => Some (width i)
     | None => None
     end
-  | EXP_RAT sbb_expr0 sbb_expr1 =>
-    match Asbb sbb_expr0 env, Asbb sbb_expr1 env with
-    | Some sbb0, Some sbb1 => Some (RAT sbb0 sbb1)
+  | EXP_RAT expr_ps expr_qs =>
+    match Asbb expr_ps env, Asbb expr_qs env with
+    | Some ps, Some qs => Some (RAT ps qs)
     | _, _ => None
     end
-  | EXP_projl i_expr =>
-    match Ai i_expr env with
+  | EXP_projl expr_i =>
+    match Ai expr_i env with
     | Some i => Some (lower i)
     | _ => None
     end
-  | EXP_proju i_expr =>
-    match Ai i_expr env with
+  | EXP_proju expr_i =>
+    match Ai expr_i env with
     | Some i => Some (upper i)
     | _ => None
     end
-  | EXP_projxl bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projxl bb)
+  | EXP_projxl expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projxl p)
     | None => None
     end
-  | EXP_projxu bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projxu bb)
+  | EXP_projxu expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projxu p)
     | None => None
     end
-  | EXP_projyl bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projyl bb)
+  | EXP_projyl expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projyl p)
     | None => None
     end
-  | EXP_projyu bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (projyu bb)
+  | EXP_projyu expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (projyu p)
     | None => None
     end
   end.
@@ -1108,137 +1016,137 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
   match expr with
   | EXP_Bvar s =>
     match find s env with
-    | Some (Vb b) => Some b
+    | Some (Vb a) => Some a
     | _ => None
     end
-  | EXP_not b_expr =>
-    match B b_expr env with
+  | EXP_not expr_a =>
+    match B expr_a env with
     | Some b => Some (not b)
     | None => None
     end
-  | EXP_and b_expr0 b_expr1 =>
-    match B b_expr0 env, B b_expr1 env with
-    | Some b0, Some b1 => Some (b0 /\ b1)
+  | EXP_and expr_a expr_b =>
+    match B expr_a env, B expr_b env with
+    | Some a, Some b => Some (a /\ b)
     | _, _ => None
     end
-  | EXP_or b_expr0 b_expr1 =>
-    match B b_expr0 env, B b_expr1 env with
-    | Some b0, Some b1 => Some (b0 \/ b1)
+  | EXP_or expr_a expr_b =>
+    match B expr_a env, B expr_b env with
+    | Some a, Some b => Some (a \/ b)
     | _, _ => None
     end
-  | EXP_BBeq bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBeq bb0 bb1)
+  | EXP_BBeq expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (p == b)
     | _, _ => None
     end
-  | EXP_BBoverlap bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBoverlap bb0 bb1)
+  | EXP_BBoverlap expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (BBoverlap p b)
     | _, _ => None
     end
-  | EXP_BBsubset bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBsubset bb0 bb1)
+  | EXP_BBsubset expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (BBsubset p b)
     | _, _ => None
     end
-  | EXP_BBsupset bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBsupset bb0 bb1)
+  | EXP_BBsupset expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (BBsupset p b)
     | _, _ => None
     end
-  | EXP_BBsubseteq bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBsubseteq bb0 bb1)
+  | EXP_BBsubseteq expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (BBsubseteq p b)
     | _, _ => None
     end
-  | EXP_BBsupseteq bb_expr0 bb_expr1 =>
-    match Abb bb_expr0 env, Abb bb_expr1 env with
-    | Some bb0, Some bb1 => Some (BBsupseteq bb0 bb1)
+  | EXP_BBsupseteq expr_p expr_q =>
+    match Abb expr_p env, Abb expr_q env with
+    | Some p, Some b => Some (BBsupseteq p b)
     | _, _ => None
     end
-  | EXP_Ilt i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Ilt i0 i1)
+  | EXP_Ilt expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (i < j)
     | _, _ => None
     end
-  | EXP_Igt i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Igt i0 i1)
+  | EXP_Igt expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (i > j)
     | _, _ => None
     end
-  | EXP_Ieq i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Ieq i0 i1)
+  | EXP_Ieq expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Ieq i j)
     | _, _ => None
     end
-  | EXP_Ioverlap i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Ioverlap i0 i1)
+  | EXP_Ioverlap expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Ioverlap i j)
     | _, _ => None
     end
-  | EXP_Iin q_expr i_expr =>
-    match Aq q_expr env, Ai i_expr env with
-    | Some q, Some i => Some (Iin q i)
+  | EXP_Iin expr_x expr_i =>
+    match Aq expr_x env, Ai expr_i env with
+    | Some x, Some i => Some (Iin x i)
     | _, _ => None
     end
-  | EXP_Iinrev i_expr q_expr =>
-    match Aq q_expr env, Ai i_expr env with
-    | Some q, Some i => Some (Iin q i)
+  | EXP_Iinrev expr_i expr_x =>
+    match Aq expr_x env, Ai expr_i env with
+    | Some x, Some i => Some (Iin x i)
     | _, _ => None
     end
-  | EXP_Isubset i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Isubset i0 i1)
+  | EXP_Isubset expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Isubset i j)
     | _, _ => None
     end
-  | EXP_Isupset i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Isupset i0 i1)
+  | EXP_Isupset expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Isupset i j)
     | _, _ => None
     end
-  | EXP_Isubseteq i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Isubseteq i0 i1)
+  | EXP_Isubseteq expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Isubseteq i j)
     | _, _ => None
     end
-  | EXP_Isupseteq i_expr0 i_expr1 =>
-    match Ai i_expr0 env, Ai i_expr1 env with
-    | Some i0, Some i1 => Some (Isupseteq i0 i1)
+  | EXP_Isupseteq expr_i expr_j =>
+    match Ai expr_i env, Ai expr_j env with
+    | Some i, Some j => Some (Isupseteq i j)
     | _, _ => None
     end
-  | EXP_Qlt q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0 < q1)%Q
+  | EXP_Qlt expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x < y)%Q
     | _, _ => None
     end
-  | EXP_Qgt q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0 < q1)%Q
+  | EXP_Qgt expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x < y)%Q
     | _, _ => None
     end
-  | EXP_Qeq q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0 = q1)
+  | EXP_Qeq expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x = y)
     | _, _ => None
     end
-  | EXP_Qle q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0 <= q1)%Q
+  | EXP_Qle expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x <= y)%Q
     | _, _ => None
     end
-  | EXP_Qge q_expr0 q_expr1 =>
-    match Aq q_expr0 env, Aq q_expr1 env with
-    | Some q0, Some q1 => Some (q0 <= q1)%Q
+  | EXP_Qge expr_x expr_y =>
+    match Aq expr_x env, Aq expr_y env with
+    | Some x, Some y => Some (x <= y)%Q
     | _, _ => None
     end
-  | EXP_forall bound sbb_expr b_expr =>
-    match Asbb sbb_expr env with
-    | Some sbb => List.fold_left option_and (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some True)
+  | EXP_forall bound expr_ps expr_a =>
+    match Asbb expr_ps env with
+    | Some ps => List.fold_left option_and (List.map (fun p => B expr_a (add bound (Vbb p) env)) ps) (Some True)
     | _ => None
     end
-  | EXP_exists bound sbb_expr b_expr =>
-    match Asbb sbb_expr env with
-    | Some sbb => List.fold_left option_or (List.map (fun bb => B b_expr (add bound (Vbb bb) env)) sbb) (Some False)
+  | EXP_exists bound expr_ps expr_a =>
+    match Asbb expr_ps env with
+    | Some ps => List.fold_left option_or (List.map (fun p => B expr_a (add bound (Vbb p) env)) ps) (Some False)
     | _ => None
     end
   end.
@@ -1247,34 +1155,34 @@ Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
 Definition Ccond (cond : Cond) (env : Env) : option Prop :=
   match cond with
   | CND_None => Some True
-  | CND b => B b env
+  | CND a => B a env
   end.
 
 Definition Cdef (def : Def) (env : Env) : option Env :=
   match def with
-  | DEF_SBB s sbb_expr =>
-    match Asbb sbb_expr env with
-    | Some sbb => Some (add s (Vsbb sbb) env)
+  | DEF_SBB s expr_ps =>
+    match Asbb expr_ps env with
+    | Some ps => Some (add s (Vsbb ps) env)
     | _ => None
     end
-  | DEF_BB s bb_expr =>
-    match Abb bb_expr env with
-    | Some bb => Some (add s (Vbb bb) env)
+  | DEF_BB s expr_p =>
+    match Abb expr_p env with
+    | Some p => Some (add s (Vbb p) env)
     | _ => None
     end
-  | DEF_I s i_expr =>
-    match Ai i_expr env with
+  | DEF_I s expr_i =>
+    match Ai expr_i env with
     | Some i => Some (add s (Vi i) env)
     | _ => None
     end
-  | DEF_Q s q_expr =>
-    match Aq q_expr env with
-    | Some q => Some (add s (Vq q) env)
+  | DEF_Q s expr_x =>
+    match Aq expr_x env with
+    | Some x => Some (add s (Vq x) env)
     | _ => None
     end
-  | DEF_B s b_expr =>
-    match B b_expr env with
-    | Some b => Some (add s (Vb b) env)
+  | DEF_B s expr_a =>
+    match B expr_a env with
+    | Some a => Some (add s (Vb a) env)
     | _ => None
     end
   end.
@@ -1291,11 +1199,11 @@ Fixpoint Cdefs (defs : list Def) (env : Env) : option Env :=
 
 Definition Ccase (case : Case) (env : Env) : option (string * Prop) :=
   match case with
-  | (l, defs, b_expr) =>
+  | (label, defs, expr_a) =>
     match Cdefs defs env with
     | Some env' =>
-      match B b_expr env' with
-      | Some b => Some (l, b)
+      match B expr_a env' with
+      | Some a => Some (label, a)
       | _ => None
       end
     | _ => None
@@ -1308,7 +1216,7 @@ Fixpoint Ccases (cases : list Case) (env : Env) (accum : list (string * Prop)) :
   | nil => Some accum
   | cons case cases' =>
     match Ccase case env with
-    | Some lb => Ccases cases' env (cons lb accum)
+    | Some label_bool => Ccases cases' env (cons label_bool accum)
     | _ => None
     end
   end.
@@ -1318,9 +1226,9 @@ Definition Cspec (spec : Spec) (env : Env) : option (list (string * Prop)) :=
   match spec with
   | (cond, cases) =>
     match Ccond cond env, Ccases cases env nil with
-    | Some b, Some lbs => Some (List.map
-          (fun lb => match lb with (l, b') => (l, b /\ b') end)
-          lbs)
+    | Some a, Some label_bools => Some (List.map
+          (fun label_bool => match label_bool with (label, b) => (label, a /\ b) end)
+          label_bools)
     | _, _ => None
     end
   end.
