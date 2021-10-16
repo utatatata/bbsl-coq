@@ -1,4 +1,4 @@
 -R . Extra
-Init/LogicExtra.v
-QArith/QArithExtra.v
-QArith/QminmaxExtra.v
+Init/Logic.v
+QArith/QArith.v
+QArith/Qminmax.v

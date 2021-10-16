@@ -1,4 +1,4 @@
-Require Import QArith Qminmax.
+Require Import Coq.QArith.QArith Coq.QArith.Qminmax.
 
 Lemma Qmin_ltl_comm : forall x y z, Qmin x y < z <-> Qmin y x < z.
 Proof.

@@ -1,5 +1,5 @@
 Require Import List String.
-Require Import BBSL.BBSL.
+Require Import BBSL.BBSL BBSL.Interval BBSL.BB.
 Import ListNotations.
 
 Local Open Scope string_scope.

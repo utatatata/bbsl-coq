@@ -1,4 +1,4 @@
-Require Import QArith QOrderedType.
+Require Import Coq.QArith.QArith QOrderedType.
 
 Lemma Qeq_sym_iff : forall x y, x == y <-> y == x.
 Proof.
