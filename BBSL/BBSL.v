@@ -1,4 +1,5 @@
 Require Import ClassicalDescription QArith OrdersFacts QOrderedType Qminmax GenericMinMax String Bool List FMapList OrderedTypeEx Bool.
+Require Import Extra.Init.LogicExtra Extra.QArith.QArithExtra Extra.QArith.QminmaxExtra.
 Import ListNotations.
 
 Declare Scope BBSL_scope.
@@ -9,210 +10,6 @@ Local Open Scope Q_scope.
 Local Open Scope list_scope.
 
 Local Open Scope BBSL_scope.
-
-
-(******************** Helpers ********************)
-
-Lemma nor_nandn : forall A B, ~(A \/ B) -> ~A /\ ~B.
-Proof.
-  unfold not. intros A B H. split.
-  - intro. destruct H. now apply or_introl.
-  - intro. destruct H. now apply or_intror.
-Qed.
-
-Lemma Qeq_sym_iff : forall x y, (x == y)%Q <-> (y == x)%Q.
-Proof.
-  intros.
-  split. q_order. q_order.
-Qed.
-
-Lemma Qlt_asym : forall x y, ~((x < y)%Q /\ (y < x)%Q).
-Proof.
-  unfold not. intros x y H. destruct H.
-  q_order.
-Qed.
-
-Lemma Qgt_ge_trans : forall x y z, x > y -> y >= z -> x > z.
-Proof.
-  intros. q_order.
-Qed.
-
-Lemma Qge_gt_trans : forall x y z, x >= y -> y > z -> x > z.
-Proof.
-  intros. q_order.
-Qed.
-
-Lemma Qmin_ltl_comm : forall x y z, (Qmin x y < z)%Q <-> (Qmin y x < z)%Q.
-Proof.
-  intros. now rewrite Q.min_comm.
-Qed.
-
-Lemma Qmin_ltr_comm : forall x y z, (z < Qmin x y)%Q <-> (z < Qmin x y)%Q.
-Proof.
-  intros. now rewrite Q.min_comm.
-Qed.
-
-Lemma Qmin_lel_comm : forall x y z, (Qmin x y <= z)%Q <-> (Qmin y x <= z)%Q.
-Proof.
-  intros. now rewrite Q.min_comm.
-Qed.
-
-Lemma Qmin_ler_comm : forall x y z, (z <= Qmin x y)%Q <-> (z <= Qmin y x)%Q.
-Proof.
-  intros. now rewrite  Q.min_comm.
-Qed.
-
-Lemma Qmax_ltl_comm : forall x y z, (Qmax x y < z)%Q <-> (Qmax y x < z)%Q.
-Proof.
-  intros. now rewrite Q.max_comm.
-Qed.
-
-Lemma Qmax_ltr_comm : forall x y z, (z < Qmax x y)%Q <-> (z < Qmax y x)%Q.
-Proof.
-  intros. now rewrite Q.max_comm.
-Qed.
-
-Lemma Qmax_lel_comm : forall x y z, (Qmax x y <= z)%Q <-> (Qmax y x <= z)%Q.
-Proof.
-  intros. now rewrite Q.max_comm.
-Qed.
-
-Lemma Qmax_ler_comm : forall x y z, (z <= Qmax x y)%Q <-> (z <= Qmax y x)%Q.
-Proof.
-  intros. now rewrite Q.max_comm.
-Qed.
-
-Lemma Qlt_not_ge_iff : forall x y, x < y <-> ~y <= x.
-Proof.
-  intros. split. q_order. q_order.
-Qed.
-
-Lemma Qle_not_gt_iff : forall x y, x <= y <-> ~y < x.
-Proof.
-  intros. split. q_order. q_order.
-Qed.
-
-Lemma Qmin_lt_max_iff : forall x y z w, (Qmin x y < Qmax z w)%Q <-> ((x < z)%Q \/ (x < w)%Q) \/ (y < z)%Q \/ (y < w)%Q.
-Proof.
-  intros.
-  now rewrite Q.min_lt_iff, Q.max_lt_iff, Q.max_lt_iff.
-Qed.
-
-Lemma Qmax_le_min_iff : forall x y z w, (Qmax x y <= Qmin z w)%Q <-> (x <= z /\ x <= w) /\ y <= z /\ y <= w.
-Proof.
-  intros x y z w.
-  now rewrite Q.max_lub_iff, Q.min_glb_iff, Q.min_glb_iff.
-Qed.
-
-Lemma Qmin_le_max_iff : forall x y z w, (Qmin x y <= Qmax z w)%Q <-> (x <= z \/ x <= w) \/ y <= z \/ y <= w.
-Proof.
-  intros.
-  now rewrite Q.min_le_iff, Q.max_le_iff, Q.max_le_iff.
-Qed.
-
-Definition option_and (a b : option Prop) : option Prop :=
-    match a, b with
-    | Some a, Some b => Some (a /\ b)
-    | _, _ => None
-    end.
-
-Definition option_or (a b : option Prop) : option Prop :=
-    match a, b with
-    | Some a, Some b => Some (a \/ b)
-    | _, _ => None
-    end.
-
-(* TODO unnecessary? *)
-(*
-Lemma toTrue : forall P : Prop, P -> P <-> True.
-Proof.
-  now intro P.
-Qed.
-*)
-
-(*
-Lemma norn_nand : forall A B, ~A \/ ~B -> ~(A /\ B).
-Proof.
-  unfold not. intros A B H. destruct H.
-  intro HAandB. destruct HAandB as (HA & HB). contradiction.
-  intro HAandB. destruct HAandB as (HA & HB). apply (H HB).
-Qed.
-*)
-
-(*
-Lemma or_falser : forall A : Prop, A \/ False <-> A.
-Proof.
-  intros. split.
-  - intros. destruct H. assumption. contradiction. 
-  - intros. apply (or_introl H).
-Qed.
-
-Lemma or_falsel : forall A : Prop, False \/ A <-> A.
-Proof.
-  intros.
-  rewrite (or_comm False A).
-  revert A.
-  apply or_falser.
-Qed.
-
-Lemma or_truel : forall A : Prop, True \/ A <-> True.
-Proof.
-  intros. split.
-  - intros. destruct H. trivial. trivial.
-  - intros. apply (or_introl H).
-Qed. 
-
-Lemma or_truer : forall A : Prop, A \/ True <-> True.
-Proof.
-  intros.
-  rewrite (or_comm A True).
-  revert A.
-  apply or_truel.
-Qed.
-
-Lemma and_truel : forall A : Prop, True /\ A <-> A.
-Proof.
-  intros. split.
-  - intros. destruct H. trivial.
-  - intros. split. trivial. trivial.
-Qed.
-
-Lemma and_truer : forall A : Prop, A /\ True <-> A.
-Proof.
-  intros.
-  rewrite (and_comm A True).
-  revert A.
-  apply and_truel.
-Qed.
-
-Lemma and_l : forall A B : Prop, B -> (A /\ B <-> A).
-Proof.
-  intros. split.
-  - intros. destruct H0. assumption.
-  - intros. apply (conj H0 H).
-Qed.
-
-Lemma and_r : forall A B : Prop, A -> (A /\ B <-> B).
-Proof.
-  intros.
-  rewrite (and_comm A B).
-  revert H.
-  apply and_l.
-Qed.
-
-Lemma or_l : forall A B : Prop, A -> (A \/ B <-> True).
-Proof.
-  intros. split.
-  intros. trivial. intros. apply (or_introl H).
-Qed.
-
-Lemma or_r : forall A B : Prop, B -> (A \/ B <-> True).
-Proof.
-  intros. rewrite (or_comm A B).
-  revert H. revert B A. apply or_l.
-Qed.
-*)
-
 
 
 (******************** Interval ********************)
@@ -991,6 +788,18 @@ with Aq (expr : Qexp) (env : Env) : option Q :=
     | None => None
     end
   end.
+  
+Definition option_and (a b : option Prop) : option Prop :=
+    match a, b with
+    | Some a, Some b => Some (a /\ b)
+    | _, _ => None
+    end.
+
+Definition option_or (a b : option Prop) : option Prop :=
+    match a, b with
+    | Some a, Some b => Some (a \/ b)
+    | _, _ => None
+    end.
 
 (* Boolean *)
 Fixpoint B (expr : Bexp) (env : Env) : option Prop :=
