@@ -13,44 +13,6 @@ Local Open Scope BBSL_scope.
 
 (******************** Helpers ********************)
 
-(*
-(* use classical facts *)
-Lemma DNE : forall A, ~~A <-> A.
-Proof.
-  intros.
-  destruct (excluded_middle_informative A).
-  split. 
-  - intros. assumption.
-  - intros.
-    unfold not. intros.
-    apply (H0 H).
-  - unfold not. split. 
-    intros. contradiction. intros. apply (H0 H).
-Qed.
-
-(* use classical facts *)
-Lemma not_Ioverlap_lt_gt : forall i0 i1, ~Iempty i0 /\ ~Iempty i1 -> ~Ioverlap i0 i1 <-> Ilt i0 i1 \/ Igt i0 i1.
-Proof.
-  unfold Ioverlap. unfold Iempty. unfold Iintersection. unfold Ilt. unfold Igt.
-  intros. destruct i0. destruct i1. simpl.
-  rewrite (DNE (Qmin q0 q2 < Qmax q q1)%Q).
-  simpl in H. unfold not in H.  destruct H.
-  rewrite (Qmin_lt_max_iff q0 q2 q q1).
-  split.
-  - intros.
-    destruct H1. destruct H1.
-    contradiction.
-    left. assumption.
-    destruct H1.
-    right. assumption.
-    contradiction.
-  - intros.
-    destruct H1.
-    left. right. assumption.
-    right. left. assumption.
-Qed.
-*)
-
 Lemma nor_nandn : forall A B, ~(A \/ B) -> ~A /\ ~B.
 Proof.
   unfold not. intros A B H. split.
@@ -394,6 +356,14 @@ Qed.
 Definition Iintersection (i j : Interval) : Interval :=
   (Qmax (lower i) (lower j), Qmin (upper i) (upper j)).
 
+Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
+Proof.
+  unfold Iintersection, Ieq.
+  simpl. intros.
+  rewrite Q.max_comm, Q.min_comm.
+  split. q_order. q_order.
+Qed.
+
 Definition Isubset (i j : Interval) := (lower j < lower i)%Q /\ (upper i < upper j)%Q.
 Definition Isubseteq (i j : Interval) := (lower j <= lower i)%Q /\ (upper i <= upper j)%Q.
 Notation Isupset a b := (Isubset b a) (only parsing).
@@ -514,14 +484,6 @@ Proof.
   split. q_order. q_order.
 Qed.
 
-Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
-Proof.
-  unfold Iintersection, Ieq.
-  simpl. intros.
-  rewrite Q.max_comm, Q.min_comm.
-  split. q_order. q_order.
-Qed.
-
 Lemma Iintersection_if_divided6 : forall x y, Isubset y x -> Iintersection y x == y.
 Proof.
   now intros; apply Iintersection_if_divided5.
@@ -606,6 +568,25 @@ Proof.
   split.
   - split. q_order. q_order.
   - split. q_order. q_order.
+Qed.
+
+Lemma Ioverlap_nempty_intersection_iff : forall i j,
+  Inempty i -> Inempty j -> Inempty (Iintersection i j) <-> Ioverlap i j.
+Proof.
+  unfold Ioverlap, Inempty, Iintersection.
+  destruct i, j. simpl.
+  now rewrite Qmax_le_min_iff; intros.
+Qed.
+
+Lemma Iempty_intersection_not_overlap : forall i j,
+  Inempty i -> Inempty j -> Iempty (Iintersection i j) -> ~Ioverlap i j.
+Proof.
+  unfold Iempty, Ioverlap, Inempty, Iintersection.
+  destruct i, j. simpl.
+  rewrite Qmin_lt_max_iff, Qmax_le_min_iff.
+  intros H H0 H1 H2. destruct H2, H2, H3. destruct H1 as [H1|H1].
+  -- destruct H1 as [H1|H1]. q_order. q_order.
+  -- destruct H1 as [H1|H1]. q_order. q_order.
 Qed.
 
 Lemma Isubset_overlap :
