@@ -2,12 +2,9 @@ Require Import Coq.QArith.QArith QOrderedType.
 
 (** * Equality **)
 
-(** To use rewrite, iff version is necessary. **)
-
-Lemma Qeq_sym_iff : forall x y, x == y <-> y == x.
+Lemma Qeq_comm : forall x y, x == y <-> y == x.
 Proof.
-  intros.
-  split. q_order. q_order.
+  split. now intro; apply Qeq_sym. now intro; apply Qeq_sym.
 Qed.
 
 (** * Comparison **)

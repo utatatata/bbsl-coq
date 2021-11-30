@@ -3,6 +3,9 @@ Require Import Extra.Init.Logic Extra.QArith.QArith Extra.QArith.Qminmax.
 
 Local Open Scope Q_scope.
 
+(** * Definition of [Interval] and basic properties **)
+
+(** Intervals are pairs of [Q] **)
 
 Definition Interval : Type := Q * Q.
 
@@ -18,13 +21,13 @@ Definition Inempty (i :Interval) := lower i <= upper i.
 
 Lemma Iempty_not_nempty_iff : forall i, Iempty i <-> ~Inempty i.
 Proof.
-  unfold Iempty, Inempty. intro.
+  unfold Iempty, Inempty.
   split. q_order. q_order.
 Qed.
 
 Lemma Inempty_not_empty_iff : forall i, Inempty i <-> ~Iempty i.
 Proof.
-  unfold Inempty, Iempty. intro.
+  unfold Inempty, Iempty.
   split. q_order. q_order.
 Qed.
 
@@ -36,16 +39,15 @@ Qed.
 
 Lemma Iin_not_nin_iff : forall x i, Inempty i -> Iin x i <-> ~Inin x i.
 Proof.
-  unfold Inempty, Iin, Inin. intros x i H. split.
-  - intros H0 H1. destruct H0, H1. q_order. q_order.
-  - intros H0. apply nor_nandn in H0. destruct H0.
-    split. q_order. q_order.
+  unfold Inempty, Iin, Inin.
+  intros x (il, iu). simpl.
+  now rewrite nor_nandn_iff, (Qle_not_lt_iff il x), (Qle_not_lt_iff x iu).
 Qed.
 
 Lemma Inin_not_in : forall x i, Inempty i -> Inin x i -> ~Iin x i.
 Proof.
   unfold Inempty, Inin, Iin.
-  intros x i H H0 H1. destruct H1, H0.
+  intros x i Hil_lt_iu [Hx_lt_il|Hiu_lt_x] (Hil_le_x, Hx_le_iu).
   q_order. q_order.
 Qed.
 
@@ -55,23 +57,30 @@ Qed.
 
 Lemma Iin_lower : forall i, Inempty i -> Iin (lower i) i.
 Proof.
-  unfold Inempty, Iin. intros.
+  unfold Inempty, Iin.
   split. apply Qle_refl. assumption.
 Qed.
 
 Lemma Iin_upper : forall i, Inempty i -> Iin (upper i) i.
 Proof.
-  unfold Inempty, Iin. intros.
+  unfold Inempty, Iin.
   split. assumption. apply Qle_refl.
 Qed.
 
 Definition width (i : Interval) := Qmax 0 (upper i - lower i).
+
+(** Properties of order upon Interval. **)
 
 Definition Ieq (i j : Interval) := lower i == lower j /\ upper i == upper j.
 Definition Ilt (i j : Interval) := upper i < lower j.
 Definition Ile (i j : Interval) := upper i <= lower j.
 Notation Igt a b := (Ilt b a) (only parsing).
 Notation Ige a b := (Ile b a) (only parsing).
+
+Definition Isubset (i j : Interval) := (lower j < lower i)%Q /\ (upper i < upper j)%Q.
+Definition Isubseteq (i j : Interval) := (lower j <= lower i)%Q /\ (upper i <= upper j)%Q.
+Notation Isupset a b := (Isubset b a) (only parsing).
+Notation Isupseteq a b := (Isubseteq b a) (only parsing).
 
 Infix "==" := Ieq (at level 70, no associativity) : Interval_scope.
 Infix "<" := Ilt : Interval_scope.
@@ -82,59 +91,27 @@ Notation "x <= y <= z" := (x<=y/\y<=z) : Interval_scope.
 
 Lemma Ieq_refl : forall i, i == i.
 Proof.
-  unfold Ieq. intros. split. q_order. q_order.
+  unfold Ieq. split. apply Qeq_refl. apply Qeq_refl.
 Qed.
 
-Lemma Ieq_sym_iff : forall i j, i == j <-> j == i.
+Lemma Ieq_sym : forall i j, i == j -> j == i.
 Proof.
-  destruct i as (il, iu), j as (jl, ju).
-  unfold Ieq. simpl.
-  now rewrite (Qeq_sym_iff jl il), (Qeq_sym_iff ju iu).
+  unfold Ieq. intros (il, iu) (jl, ju). simpl.
+  now rewrite Qeq_comm, Qeq_comm.
+Qed.
+
+(* TODO:  *)
+Lemma Ieq_comm : forall i j, i == j <-> j == i.
+Proof.
+  intros i j. split.
+  now intro; apply Ieq_sym. now intro; apply Ieq_sym.
 Qed.
 
 Lemma Ieq_trans : forall i j k, i == j -> j == k -> i == k.
 Proof.
   unfold Ieq.
-  intros i j k H H0. destruct H, H0.
+  intros i j k (Hil_eq_jl, Hiu_eq_ju) (Hjl_eq_kl, Hju_eq_ku).
   split. q_order. q_order.
-Qed.
-
-Lemma Ilt_antisymm : forall i j, Inempty i -> Inempty j -> i < j -> ~j < i.
-Proof.
-  unfold Inempty, Ilt.
-  q_order.
-Qed.
-
-Lemma Igt_antisymm : forall i j, Inempty i -> Inempty j -> i > j -> ~j > i.
-Proof.
-  unfold Inempty, Ilt.
-  q_order.
-Qed.
-
-Lemma Ilt_not_gt : forall i j,
-  Inempty i -> Inempty j -> i < j -> ~i > j.
-Proof.
-  unfold Inempty, Ilt.
-  q_order.
-Qed.
-
-Lemma Igt_not_lt : forall i j,
-  Inempty i -> Inempty j -> i > j -> ~i < j.
-Proof.
-  unfold Inempty, Ilt.
-  q_order.
-Qed.
-
-Lemma Ile_trans : forall i j k, Inempty j -> i <= j -> j <= k -> i <= k.
-Proof.
-  unfold Ile, Inempty.
-  q_order.
-Qed.
-
-Lemma Ilt_trans : forall i j k, Inempty j -> i < j -> j < k -> i < k.
-Proof.
-  unfold Ilt, Inempty.
-  q_order.
 Qed.
 
 Lemma Ilt_irrefl : forall i, Inempty i -> ~i < i.
@@ -143,21 +120,28 @@ Proof.
   q_order.
 Qed.
 
-Definition Iintersection (i j : Interval) : Interval :=
-  (Qmax (lower i) (lower j), Qmin (upper i) (upper j)).
-
-Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
+Lemma Ilt_asymm : forall i j, Inempty i -> Inempty j -> i < j -> ~j < i.
 Proof.
-  unfold Iintersection, Ieq.
-  simpl. intros.
-  rewrite Q.max_comm, Q.min_comm.
+  unfold Inempty, Ilt. q_order.
+Qed.
+
+Lemma Ilt_trans : forall i j k, Inempty j -> i < j -> j < k -> i < k.
+Proof.
+  unfold Ilt, Inempty. q_order.
+Qed.
+
+(*TODO ????*)
+Lemma Ile_antisym : forall i j, Inempty i -> Inempty j -> i <= j -> j <= i -> i == j.
+Proof.
+  unfold Inempty, Ile, Ieq.
+  intros (il, iu) (jl, ju). simpl. intros Hil_le_iu Hjl_le_ju Hiu_le_jl Hju_le_il.
   split. q_order. q_order.
 Qed.
 
-Definition Isubset (i j : Interval) := (lower j < lower i)%Q /\ (upper i < upper j)%Q.
-Definition Isubseteq (i j : Interval) := (lower j <= lower i)%Q /\ (upper i <= upper j)%Q.
-Notation Isupset a b := (Isubset b a) (only parsing).
-Notation Isupseteq a b := (Isubseteq b a) (only parsing).
+Lemma Ile_trans : forall i j k, Inempty j -> i <= j -> j <= k -> i <= k.
+Proof.
+  unfold Ile, Inempty. q_order.
+Qed.
 
 Lemma Isubseteq_refl : forall x, Isubseteq x x.
 Proof.
@@ -179,16 +163,6 @@ Proof.
   split. q_order. q_order.
 Qed.
 
-Lemma Isubseteq_intersection : forall x y,
-  Isubseteq (Iintersection x y) x /\ Isubseteq (Iintersection x y) y.
-Proof.
-  unfold Iintersection, Isubseteq. intros. simpl.
-  rewrite Q.max_le_iff, Q.max_le_iff, Q.min_le_iff, Q.min_le_iff.
-  split.
-  - split. left. q_order. left. q_order.
-  - split. right. q_order. right. q_order.
-Qed.
-
 Lemma Isubset_irrefl : forall x, Inempty x -> ~Isubset x x.
 Proof.
   unfold Isubset, Inempty, not.
@@ -200,6 +174,27 @@ Lemma Isubset_trans : forall i j k, Isubset i j -> Isubset j k -> Isubset i k.
 Proof.
   unfold Isubset. intros i j k H H0. destruct H, H0.
   split. q_order. q_order.
+Qed.
+
+Definition Iintersection (i j : Interval) : Interval :=
+  (Qmax (lower i) (lower j), Qmin (upper i) (upper j)).
+
+Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
+Proof.
+  unfold Iintersection, Ieq.
+  simpl. intros.
+  rewrite Q.max_comm, Q.min_comm.
+  split. q_order. q_order.
+Qed.
+
+Lemma Isubseteq_intersection : forall x y,
+  Isubseteq (Iintersection x y) x /\ Isubseteq (Iintersection x y) y.
+Proof.
+  unfold Iintersection, Isubseteq. intros. simpl.
+  rewrite Q.max_le_iff, Q.max_le_iff, Q.min_le_iff, Q.min_le_iff.
+  split.
+  - split. left. q_order. left. q_order.
+  - split. right. q_order. right. q_order.
 Qed.
 
 Lemma Isubset_intersection_l : forall i j, Isubset i j -> Iintersection i j == i.
@@ -257,10 +252,10 @@ Lemma Iintersection_if_divided4 : forall x y,
 Proof.
   unfold Ieq, Iintersection.
   simpl. intros x y H.  destruct H.
-  rewrite Qeq_sym_iff, Q.max_l_iff
-        , Qeq_sym_iff, Q.min_l_iff
-        , Qeq_sym_iff, Q.max_r_iff
-        , Qeq_sym_iff, Q.min_r_iff.
+  rewrite Qeq_comm, Q.max_l_iff
+        , Qeq_comm, Q.min_l_iff
+        , Qeq_comm, Q.max_r_iff
+        , Qeq_comm, Q.min_r_iff.
   split.
   - split. q_order. q_order.
   - split. q_order. q_order.
@@ -313,8 +308,8 @@ Lemma Ioverlap_comm : forall i j, Ioverlap i j <-> Ioverlap j i.
 Proof.
   unfold Ioverlap, Inempty, Iintersection.
   intros. simpl. split.
-  - now rewrite Qmax_lel_comm, Qmin_ler_comm.
-  - now rewrite Qmax_lel_comm, Qmin_ler_comm.
+  - now rewrite Qmax_le_min_iff, Qmax_le_min_iff.
+  - now rewrite Qmax_le_min_iff, Qmax_le_min_iff.
 Qed.
 
 Lemma Ilt_not_overlap : forall i j,

@@ -46,10 +46,10 @@ Proof.
   apply Ieq_refl. apply Ieq_refl.
 Qed.
 
-Lemma BBeq_sym_iff : forall p q, p == q <-> q == p.
+Lemma BBeq_comm : forall p q, p == q <-> q == p.
 Proof.
   unfold BBeq. destruct p as (px, py), q as (qx, qy). simpl.
-  now rewrite (Ieq_sym_iff qx px), (Ieq_sym_iff qy py).
+  now rewrite (Ieq_comm qx px), (Ieq_comm qy py).
 Qed.
 
 Lemma BBeq_trans : forall p q r, p == q -> q == r -> p == r.
