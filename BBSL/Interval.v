@@ -1,86 +1,41 @@
-Require Import QArith QOrderedType Qminmax.
-Require Import Extra.Init.Logic Extra.QArith.QArith Extra.QArith.Qminmax.
+Require Import Arith.
 
-Local Open Scope Q_scope.
+(** * Definition of [Interval] **)
 
-(** * Definition of [Interval] and basic properties **)
-
-(** Intervals are pairs of [Q] **)
-
-Definition Interval : Type := Q * Q.
+Definition Interval : Type := { lb_ub | fst lb_ub <= snd lb_ub }.
 
 Declare Scope Interval_scope.
 Open Scope Interval_scope.
 
-Definition lower : Q * Q -> Q := fst.
-Definition upper : Q * Q -> Q := snd.
-Definition Iin (x : Q) (i : Interval) := lower i <= x <= upper i.
-Definition Inin (x : Q) (i : Interval) := x < lower i \/ upper i < x.
-Definition Iempty (i : Interval) := lower i > upper i.
-Definition Inempty (i :Interval) := lower i <= upper i.
+Definition lb (i : Interval) := match i with exist _ tuple _ => fst tuple end.
+Definition ub (i : Interval) := match i with exist _ tuple _ => snd tuple end.
+Definition width (i : Interval) := ub i - lb i.
 
-Lemma Iempty_not_nempty_iff : forall i, Iempty i <-> ~Inempty i.
-Proof.
-  unfold Iempty, Inempty.
-  split. q_order. q_order.
-Qed.
+(** Basic relations of Interval. **)
 
-Lemma Inempty_not_empty_iff : forall i, Inempty i <-> ~Iempty i.
-Proof.
-  unfold Inempty, Iempty.
-  split. q_order. q_order.
-Qed.
-
-Lemma Iempty_nempty_dec : forall i, {Iempty i} + {Inempty i}.
-Proof.
-  unfold Iempty, Inempty. intro.
-  apply Qlt_le_dec.
-Qed.
-
-Lemma Iin_not_nin_iff : forall x i, Inempty i -> Iin x i <-> ~Inin x i.
-Proof.
-  unfold Inempty, Iin, Inin.
-  intros x (il, iu). simpl.
-  now rewrite nor_nandn_iff, (Qle_not_lt_iff il x), (Qle_not_lt_iff x iu).
-Qed.
-
-Lemma Inin_not_in : forall x i, Inempty i -> Inin x i -> ~Iin x i.
-Proof.
-  unfold Inempty, Inin, Iin.
-  intros x i Hil_lt_iu [Hx_lt_il|Hiu_lt_x] (Hil_le_x, Hx_le_iu).
-  q_order. q_order.
-Qed.
-
-(* Lemma Inot_in_nin : forall x i, Inempty i -> ~Iin x i -> Inin x i
- * need classical facts
- *)
-
-Lemma Iin_lower : forall i, Inempty i -> Iin (lower i) i.
-Proof.
-  unfold Inempty, Iin.
-  split. apply Qle_refl. assumption.
-Qed.
-
-Lemma Iin_upper : forall i, Inempty i -> Iin (upper i) i.
-Proof.
-  unfold Inempty, Iin.
-  split. assumption. apply Qle_refl.
-Qed.
-
-Definition width (i : Interval) := Qmax 0 (upper i - lower i).
-
-(** Properties of order upon Interval. **)
-
-Definition Ieq (i j : Interval) := lower i == lower j /\ upper i == upper j.
-Definition Ilt (i j : Interval) := upper i < lower j.
-Definition Ile (i j : Interval) := upper i <= lower j.
+Definition Ieq i j := lb i = lb j /\ ub i = ub j.
+Definition Ilt i j := ub i < lb j.
+Definition Ile i j := ub i <= lb j.
 Notation Igt a b := (Ilt b a) (only parsing).
 Notation Ige a b := (Ile b a) (only parsing).
 
-Definition Isubset (i j : Interval) := (lower j < lower i)%Q /\ (upper i < upper j)%Q.
-Definition Isubseteq (i j : Interval) := (lower j <= lower i)%Q /\ (upper i <= upper j)%Q.
+Definition Isubset i j := lb j < lb i /\ ub i <= ub j \/ lb j <= lb i /\ ub i < ub j.
+Definition Isubseteq i j := lb j <= lb i /\ ub i <= ub j.
 Notation Isupset a b := (Isubset b a) (only parsing).
 Notation Isupseteq a b := (Isubseteq b a) (only parsing).
+
+Definition Ioverlap (i j : Interval) : Prop :=
+  (lb j <= ub i)%nat /\ (lb i <= ub j)%nat.
+
+Definition Iintersection (i j : Interval) : Ioverlap i j -> Interval.
+  unfold Ioverlap.
+  destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (Hlbj_le_ubi, Hlbi_le_ubj).
+  assert (max lbi lbj <= min ubi ubj)%nat.
+  rewrite Nat.max_lub_iff, Nat.min_glb_iff, Nat.min_glb_iff.
+  repeat split. assumption. assumption. assumption. assumption.
+  exact (exist _ (max lbi lbj, min ubi ubj) H).
+Defined.
 
 Infix "==" := Ieq (at level 70, no associativity) : Interval_scope.
 Infix "<" := Ilt : Interval_scope.
@@ -89,229 +44,410 @@ Notation "x > y" := (Ilt y x)(only parsing) : Interval_scope.
 Notation "x >= y" := (Ile y x)(only parsing) : Interval_scope.
 Notation "x <= y <= z" := (x<=y/\y<=z) : Interval_scope.
 
-Lemma Ieq_refl : forall i, i == i.
+#[global]
+Hint Unfold Ieq Ilt Ile Isubset Isubseteq Ioverlap Iintersection : iarith.
+#[global]
+Hint Extern 5 (?X1 <> ?X2) => intro; discriminate: qarith.
+
+
+(** * Decidability *)
+
+Theorem Ilt_overlap_gt_dec : forall i j, {i < j} + {Ioverlap i j} + {i > j}.
 Proof.
-  unfold Ieq. split. apply Qeq_refl. apply Qeq_refl.
+  unfold Ilt, Ioverlap.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  destruct (lt_eq_lt_dec ubi lbj). destruct s.
+  - now left; left.
+  - left. right. split.
+    apply Nat.lt_eq_cases. now right.
+    rewrite e in p.
+    apply (le_trans lbi lbj ubj p q).
+  - destruct (lt_eq_lt_dec ubj lbi). destruct s.
+  -- now right.
+  -- left. right. split.
+     apply Nat.lt_eq_cases. now left.
+     apply Nat.lt_eq_cases. now right.
+  -- left. right. split.
+     apply Nat.lt_eq_cases. now left.
+     apply Nat.lt_eq_cases. now left.
 Qed.
 
-Lemma Ieq_sym : forall i j, i == j -> j == i.
+(** Decidability of Ioverlap *)
+
+(** disconnected *)
+Notation dcleft i j := (Ilt i j) (only parsing).
+Notation dcright i j := (dcleft j i) (only parsing).
+Notation dc i j := (dcleft i j \/ dcright i j) (only parsing).
+
+(** externally connected *)
+Definition ecleft i j := ub i = lb j.
+Notation ecright i j := (ecleft j i) (only parsing).
+Notation ec i j := (ecleft i j \/ ecright i j) (only parsing).
+
+(** equal *)
+Notation eq i j := (Ieq i j) (only parsing).
+
+(** partially overlapping *)
+Definition poleft i j := (lb i < lb j)%nat /\ (lb j < ub i)%nat /\ (ub i < ub j)%nat.
+Notation poright i j := (poleft j i) (only parsing).
+Notation po i j := (poleft i j \/ poright i j) (only parsing).
+
+(** tangential proper part *)
+Definition tppleft i j := (lb i = lb j)%nat /\ (ub i < ub j)%nat.
+Definition tppright i j := (lb j < lb i)%nat /\ (ub i = ub j)%nat.
+Notation tpp i j := (tppleft i j \/ tppright i j) (only parsing).
+
+(** tangential proper part inverse *)
+Notation tppileft i j := (tppleft j i) (only parsing).
+Notation tppiright i j := (tppright j i) (only parsing).
+Notation tppi i j := (tpp j i) (only parsing).
+
+(** non-tangential proper part *)
+Definition ntpp i j := (lb j < lb i)%nat /\ (ub i < ub j)%nat.
+
+(** non-tangential proper part inverse *)
+Notation ntppi i j := (ntpp j i) (only parsing).
+
+(** overlapping *)
+Definition overlap i j :=
+  ec i j \/ eq i j \/ po i j \/ tpp i j \/ tppi i j \/ ntpp i j \/ ntppi i j.
+
+Theorem Ioverlap_dec : forall i j, Ioverlap i j ->
+  { ecleft i j } + { poleft i j } +
+  { tppiright i j } + { tppleft i j } + { eq i j } + { ntppi i j } +
+  { tppileft i j } + { ntpp i j } + { tppright i j } +
+  { poright i j } + { ecright i j }.
 Proof.
-  unfold Ieq. intros (il, iu) (jl, ju). simpl.
-  now rewrite Qeq_comm, Qeq_comm.
+  unfold Ioverlap, ecleft, poleft, tppiright, tppleft, eq,
+         ntppi, tppileft, ntpp, tppright, poright, ecright.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (H, H0). destruct (lt_eq_lt_dec ubi lbj). destruct s.
+  (* dcleft (ubi < lbj) *)
+  - apply (le_lt_trans lbj ubi lbj H) in l. apply lt_irrefl in l. contradiction.
+  (* ecleft (ubi = lbj) *)
+  - now left; left; left; left; left; left; left; left; left; left.
+  - destruct (lt_eq_lt_dec lbi lbj), (lt_eq_lt_dec ubi ubj). destruct s, s0.
+  (* poleft (lbi < lbj /\ lbj < ubi /\ ubi < ubj) *)
+  -- left; left; left; left; left; left; left; left; left. right.
+     repeat split. assumption. assumption. assumption.
+  (* tppiright (lbi < lbj /\ ubi = lbj) *)
+  -- left; left; left; left; left; left; left; left; right.
+     split. assumption. now apply eq_sym.
+  (* tppleft (lbi = lbj /\ ubi < ubj) *)
+  -- left; left; left; left; left; left; left; right.
+     split. assumption. assumption.
+  (* eq (lbi = lbj /\ ubi = ubj) *)
+  -- left; left; left; left; left; left; right.
+     split. assumption. assumption.
+  -- destruct s.
+  (* ntppi (lbi < lbj /\ ubj < ubi) *)
+  --- left; left; left; left; left; right.
+      split. assumption. assumption.
+  (* tppileft (lbj = lbi /\ ubj < ubi) *)
+  --- left; left; left; left; right.
+      split. now apply eq_sym. assumption.
+  -- destruct s.
+  (* ntpp (lbj < lbi /\ ubi < ubj) *)
+  --- left; left; left; right.
+      split. assumption. assumption.
+  (* tppright (lbj < lbi /\ ubi = ubj) *)
+  --- left; left; right.
+      split. assumption. assumption.
+  -- destruct (lt_eq_lt_dec lbi ubj). destruct s.
+  (* poright (lbj < lbi < ubj < ubi) *)
+  --- left; right.
+      repeat split. assumption. assumption. assumption.
+  (* ecright (lbj = ubi) *)
+  --- right. now apply eq_sym.
+  (* dcright (lbi < ubj) *)
+  --- apply (le_lt_trans lbi ubj lbi H0) in l2. apply lt_irrefl in l2. contradiction.
 Qed.
 
-(* TODO:  *)
-Lemma Ieq_comm : forall i j, i == j <-> j == i.
+(** * Decidability of Relation Connection Calculus *)
+
+Theorem rcc_dec : forall i j,
+  { dcleft i j } + { ecleft i j } + { poleft i j } +
+  { tppiright i j } + { tppleft i j } + { eq i j } + { ntppi i j } +
+  { tppileft i j } + { ntpp i j } + { tppright i j } +
+  { poright i j } + { ecright i j } + { dcright i j }.
 Proof.
-  intros i j. split.
-  now intro; apply Ieq_sym. now intro; apply Ieq_sym.
+  intros i j. destruct (Ilt_overlap_gt_dec i j). destruct s.
+  - now left; left; left; left; left; left; left; left; left; left; left; left.
+  - destruct (Ioverlap_dec i j i0). repeat destruct s.
+  -- now left; left; left; left; left; left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; left; right.
+  -- now left; left; left; left; left; right.
+  -- now left; left; left; left; right.
+  -- now left; left; left; right.
+  -- now left; left; right.
+  -- now left; right.
+  - now right.
 Qed.
 
-Lemma Ieq_trans : forall i j k, i == j -> j == k -> i == k.
+
+(** * Properties of basic relations *)
+
+Theorem Ieq_refl : forall i, i == i.
 Proof.
-  unfold Ieq.
-  intros i j k (Hil_eq_jl, Hiu_eq_ju) (Hjl_eq_kl, Hju_eq_ku).
-  split. q_order. q_order.
+  auto with iarith.
 Qed.
 
-Lemma Ilt_irrefl : forall i, Inempty i -> ~i < i.
+Theorem Ieq_sym : forall i j, i == j -> j == i.
 Proof.
-  unfold Ilt, Inempty.
-  q_order.
+  unfold eq. intros i j (H, H0). split.
+  apply (sym_equal H). apply (sym_equal H0).
 Qed.
 
-Lemma Ilt_asymm : forall i j, Inempty i -> Inempty j -> i < j -> ~j < i.
+Lemma Ieq_sym_iff : forall i j, i == j <-> j == i.
 Proof.
-  unfold Inempty, Ilt. q_order.
+  split. apply Ieq_sym. apply Ieq_sym.
 Qed.
 
-Lemma Ilt_trans : forall i j k, Inempty j -> i < j -> j < k -> i < k.
+Theorem Ieq_trans : forall i j k, i == j -> j == k -> i == k.
 Proof.
-  unfold Ilt, Inempty. q_order.
+  unfold eq. intros i j k (H, H0) (H1, H2). split.
+  apply (eq_trans H H1). apply (eq_trans H0 H2).
 Qed.
 
-(*TODO ????*)
-Lemma Ile_antisym : forall i j, Inempty i -> Inempty j -> i <= j -> j <= i -> i == j.
+Theorem Ieq_dec : forall i j, {i == j} + {~ i == j}.
 Proof.
-  unfold Inempty, Ile, Ieq.
-  intros (il, iu) (jl, ju). simpl. intros Hil_le_iu Hjl_le_ju Hiu_le_jl Hju_le_il.
-  split. q_order. q_order.
+  unfold Ieq. destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
+  destruct (Nat.eq_dec lbi lbj), (Nat.eq_dec ubi ubj).
+  - left. split. assumption. assumption.
+  - right. intros (H, H0). apply (n H0).
+  - right. intros (H, H0). apply (n H).
+  - right. intros (H, H0). apply (n H).
 Qed.
 
-Lemma Ile_trans : forall i j k, Inempty j -> i <= j -> j <= k -> i <= k.
+Theorem Inot_eq_sym i j : ~ i == j -> ~ j == i.
 Proof.
-  unfold Ile, Inempty. q_order.
+  unfold Ieq, not. destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
+  intros H (H0, H1). apply H. split. now apply eq_sym in H0. now apply eq_sym in H1.
 Qed.
 
-Lemma Isubseteq_refl : forall x, Isubseteq x x.
+Theorem Ilt_irrefl : forall i, ~i < i.
 Proof.
-  unfold Isubseteq. intros.
-  split. q_order. q_order.
+  auto with iarith.
+  unfold Ilt. intros (i, p). simpl. now apply le_not_lt.
 Qed.
 
-Lemma Isubseteq_antisym : forall x y, Isubseteq x y -> Isubseteq y x -> x == y.
+Theorem Ilt_asym : forall i j, i < j -> ~j < i.
 Proof.
-  unfold Isubseteq, Ieq.
-  intros x y H H0. destruct H, H0.
-  split. q_order. q_order.
+  unfold Ilt. intros (i, p) (j, q). simpl. Nat.order.
 Qed.
 
-Lemma Isubseteq_trans : forall x y z, Isubseteq x y -> Isubseteq y z -> Isubseteq x z.
+Theorem Ilt_trans : forall i j k, i < j -> j < k -> i < k.
 Proof.
-  unfold Isubseteq. intros x y z H H0.
-  destruct H as (H, H1), H0 as (H0, H2).
-  split. q_order. q_order.
+  unfold Ilt. intros (i, p) (j, q) (k, r). simpl. Nat.order.
 Qed.
 
-Lemma Isubset_irrefl : forall x, Inempty x -> ~Isubset x x.
+Lemma Ilt_eq : forall i j k, i < j -> j == k -> i < k.
 Proof.
-  unfold Isubset, Inempty, not.
-  intros x H H0. destruct H0.
-  q_order.
+  unfold Ilt, eq. intros (i, p) (j, q) (k, r). simpl. intros H (H0, H1). Nat.order.
+Qed.
+
+Lemma eq_Ilt : forall i j k, i == j -> j < k -> i < k.
+Proof.
+  unfold Ilt, eq. intros (i, p) (j, q) (k, r). simpl. intros (H, H0). Nat.order.
+Qed.
+
+Lemma Ile_antisym : forall i j, i <= j -> j <= i -> i == j.
+Proof.
+  unfold Ile, Ieq. intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros Hubi_le_lbj Hubj_le_lbi. split.
+  - apply (le_trans lbi ubi lbj p) in Hubi_le_lbj as Hlbi_le_lbj.
+    apply (le_trans lbj ubj lbi q) in Hubj_le_lbi as Hlbj_le_lbi.
+    apply (le_antisym lbi lbj Hlbi_le_lbj Hlbj_le_lbi).
+  - apply (le_trans ubi lbj ubj Hubi_le_lbj) in q as Hubi_le_ubj.
+    apply (le_trans ubj lbi ubi Hubj_le_lbi) in p as Hubj_le_ubi.
+    apply (le_antisym ubi ubj Hubi_le_ubj Hubj_le_ubi).
+Qed.
+
+Lemma Ile_trans : forall i j k, i <= j -> j <= k -> i <= k.
+Proof.
+  unfold Ile. intros ((lbi, ubi), p) ((lbj, ubj), q) ((lbk, ubk), r).
+  simpl in p, q, r. simpl. intros Hubi_le_lbj Hubj_le_lbk.
+  apply (le_trans ubi lbj ubj Hubi_le_lbj) in q as Hubi_le_ubj.
+  apply (le_trans ubi ubj lbk Hubi_le_ubj Hubj_le_lbk).
+Qed.
+
+Lemma Isubset_irrefl : forall i, ~Isubset i i.
+Proof.
+  unfold Isubset. intros i [(Hlbi_lt_lbi, Hubi_le_ubi) | (Hlbi_le_lbi, Hubi_lt_ubi)].
+  apply (lt_irrefl (lb i) Hlbi_lt_lbi).
+  apply (lt_irrefl (ub i) Hubi_lt_ubi).
 Qed.
 
 Lemma Isubset_trans : forall i j k, Isubset i j -> Isubset j k -> Isubset i k.
 Proof.
-  unfold Isubset. intros i j k H H0. destruct H, H0.
-  split. q_order. q_order.
+  unfold Isubset. intros i j k.
+  intros [(Hlbj_lt_lbi, Hubi_le_ubj) | (Hlbj_le_lbi, Hubi_lt_ubj)]
+         [(Hlbk_lt_lbj, Hubj_le_ubk) | (Hlbk_le_lbj, Hubj_lt_ubk)].
+  - left. split.
+    now apply (lt_trans (lb k) (lb j) (lb i)).
+    now apply (le_trans (ub i) (ub j) (ub k)).
+  - left. split.
+    now apply (le_lt_trans (lb k) (lb j) (lb i)).
+    apply Nat.lt_eq_cases. left. now apply (le_lt_trans (ub i) (ub j) (ub k)).
+  - left. split.
+    now apply (lt_le_trans (lb k) (lb j) (lb i)).
+    apply Nat.lt_eq_cases. left. now apply (lt_le_trans (ub i) (ub j) (ub k)).
+  - right. split.
+    now apply (le_trans (lb k) (lb j) (lb i)).
+    now apply (lt_trans (ub i) (ub j) (ub k)).
 Qed.
 
-Definition Iintersection (i j : Interval) : Interval :=
-  (Qmax (lower i) (lower j), Qmin (upper i) (upper j)).
-
-Lemma Iintersection_comm : forall i j, Iintersection i j == Iintersection j i.
+Lemma Isubseteq_refl : forall i, Isubseteq i i.
 Proof.
-  unfold Iintersection, Ieq.
-  simpl. intros.
-  rewrite Q.max_comm, Q.min_comm.
-  split. q_order. q_order.
+  unfold Isubseteq. split. apply le_refl. apply le_refl.
 Qed.
 
-Lemma Isubseteq_intersection : forall x y,
-  Isubseteq (Iintersection x y) x /\ Isubseteq (Iintersection x y) y.
+Lemma Isubseteq_antisym : forall i j, Isubseteq i j -> Isubseteq j i -> i == j.
 Proof.
-  unfold Iintersection, Isubseteq. intros. simpl.
-  rewrite Q.max_le_iff, Q.max_le_iff, Q.min_le_iff, Q.min_le_iff.
-  split.
-  - split. left. q_order. left. q_order.
-  - split. right. q_order. right. q_order.
+  unfold Isubseteq, Ieq.
+  intros i j (Hlbj_le_lbi, Hubi_le_ubj) (Hlbi_le_lbj, Hubj_le_ubi). split.
+  apply (le_antisym (lb i) (lb j) Hlbi_le_lbj Hlbj_le_lbi).
+  apply (le_antisym (ub i) (ub j) Hubi_le_ubj Hubj_le_ubi).
 Qed.
 
-Lemma Isubset_intersection_l : forall i j, Isubset i j -> Iintersection i j == i.
+Lemma Isubseteq_trans : forall i j k, Isubseteq i j -> Isubseteq j k -> Isubseteq i k.
+Proof.
+  unfold Isubseteq.
+  intros i j k (Hlbj_le_lbi, Hubi_le_ubj) (Hlbk_le_lbj, Hubj_le_ubk). split.
+  apply (le_trans (lb k) (lb j) (lb i) Hlbk_le_lbj Hlbj_le_lbi).
+  apply (le_trans (ub i) (ub j) (ub k) Hubi_le_ubj Hubj_le_ubk).
+Qed.
+
+Lemma Isubset_eq_cases : forall i j, Isubseteq i j -> Isubset i j \/ Ieq i j.
+Proof.
+  unfold Isubseteq, Isubset, Ieq.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (Hlbj_le_lbi, Hubi_le_ubj).
+  destruct (lt_eq_lt_dec lbi lbj). destruct s.
+  - apply (le_lt_trans lbj lbi lbj Hlbj_le_lbi) in l as Hlbj_lt_lbj.
+    now apply lt_irrefl in Hlbj_lt_lbj.
+  - destruct (lt_eq_lt_dec ubj ubi). destruct s.
+  -- apply (le_lt_trans ubi ubj ubi Hubi_le_ubj) in l as Hubi_lt_ubi.
+     now apply lt_irrefl in Hubi_lt_ubi.
+  -- right. split. assumption. now apply sym_equal.
+  -- left. right. split. assumption. assumption.
+  - destruct (lt_eq_lt_dec ubj ubi). destruct s.
+  -- apply (le_lt_trans ubi ubj ubi Hubi_le_ubj) in l0 as Hubi_lt_ubi.
+     now apply lt_irrefl in Hubi_lt_ubi.
+  -- left. left. split. assumption. assumption.
+  -- left. right. split. assumption. assumption.
+Qed.
+
+Lemma Isubset_subseteq_trans : forall i j k,
+  Isubset i j -> Isubseteq j k -> Isubset i k.
+Proof.
+  unfold Isubset, Isubseteq.
+  intros ((lbi, ubi), p) ((lbj, ubj), q) ((lbk, ubk), r). simpl in p, q, r. simpl.
+  intros [(Hlbj_lt_lbi, Hubi_le_ubj) | (Hlbj_le_lbi, Hubi_lt_ubj)] (Hlbk_le_lbj, Hubj_le_ubk).
+  - left. split.
+    now apply (le_lt_trans lbk lbj lbi).
+    now apply (le_trans ubi ubj ubk).
+  - right. split.
+    now apply (le_trans lbk lbj lbi).
+    now apply (lt_le_trans ubi ubj ubk).
+Qed.
+
+Lemma Isubseteq_subset_trans : forall i j k,
+  Isubseteq i j -> Isubset j k -> Isubset i k.
+Proof.
+  unfold Isubseteq, Isubset.
+  intros ((lbi, ubi), p) ((lbj, ubj), q) ((lbk, ubk), r). simpl in p, q, r. simpl.
+  intros (Hlbj_le_lbi, Hubi_le_ubj) [(Hlbk_lt_lbj, Hubj_le_ubk) | (Hlbk_le_lbj, Hubj_lt_ubk)].
+  - left. split.
+    now apply (lt_le_trans lbk lbj lbi).
+    now apply (le_trans ubi ubj ubk).
+  - right. split.
+    now apply (le_trans lbk lbj lbi).
+    now apply (le_lt_trans ubi ubj ubk).
+Qed.
+
+Lemma Ioverlap_refl : forall i, Ioverlap i i.
+Proof.
+  unfold Ioverlap. intros ((lbi, ubi), p). simpl in p. simpl.
+  split. assumption. assumption.
+Qed.
+
+Lemma Ioverlap_sym : forall i j, Ioverlap i j -> Ioverlap j i.
+Proof.
+  unfold Ioverlap. intros i j (Hlbj_le_ubi, Hlbi_le_lbj). split.
+  assumption. assumption.
+Qed.
+
+Lemma Isubset_overlap :
+  forall i j, Isubset i j -> Ioverlap i j.
+Proof.
+  unfold Isubset, Ioverlap.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros [(Hlbj_lt_lbi, Hubi_le_ubj) | (Hlbj_le_lbi, Hubi_lt_ubj)].
+  - split.
+    apply Nat.lt_eq_cases. left. now apply (lt_le_trans lbj lbi ubi).
+    now apply (le_trans lbi ubi ubj).
+  - split.
+    now apply (le_trans lbj lbi ubi).
+    apply Nat.lt_eq_cases. left. now apply (le_lt_trans lbi ubi ubj).
+Qed.
+
+Lemma Isupset_overlap :
+  forall i j, Isupset i j -> Ioverlap i j.
+Proof.
+  intros. apply Ioverlap_sym. now apply Isubset_overlap.
+Qed.
+
+Lemma Iintersection_comm : forall i j (Hioj : Ioverlap i j) (Hjoi : Ioverlap j i), Iintersection i j Hioj == Iintersection j i Hjoi.
+Proof.
+  unfold Iintersection, Ieq, Ioverlap.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (Hlbj_le_ubi, Hlbi_le_ubj) (H, H0).
+  simpl. split.
+  apply Nat.max_comm. apply Nat.min_comm.
+Qed.
+
+Lemma Isubseteq_intersection : forall i j (Hioj : Ioverlap i j),
+  Isubseteq (Iintersection i j Hioj) i /\ Isubseteq (Iintersection i j Hioj) j.
+Proof.
+  unfold Iintersection, Ieq, Ioverlap, Isubseteq.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (Hlbj_le_ubi, Hlbi_le_ubj). simpl. repeat split.
+  - rewrite Nat.max_le_iff. left. apply le_refl.
+  - rewrite Nat.min_le_iff. left. apply le_refl.
+  - rewrite Nat.max_le_iff. right. apply le_refl.
+  - rewrite Nat.min_le_iff. right. apply le_refl.
+Qed.
+
+Lemma Isubset_intersection_l : forall i j (Hioj : Ioverlap i j),
+  Isubset i j -> Iintersection i j Hioj == i.
 Proof.
   unfold Isubset, Iintersection, Ieq.
-  destruct i, j. simpl.
-  rewrite Q.max_l_iff, Q.min_l_iff.
-  intro H. destruct H.
-  split. q_order. q_order.
+  intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
+  intros (Hlbj_le_ubi, Hlbi_le_ubj) Hisubj. simpl in Hlbj_le_ubi, Hlbi_le_ubj. simpl.
+  rewrite Nat.max_l_iff, Nat.min_l_iff.
+  destruct Hisubj as [(Hlbj_lt_lbi, Hubi_le_ubj) | (lbj_le_lbi, ubi_lt_ubj)].
+  - split. now apply lt_le_weak. assumption.
+  - split. assumption. now apply lt_le_weak.
 Qed.
 
-Lemma Isupset_intersection_r : forall i j, Isupset i j -> Iintersection i j == j.
+Lemma Isupset_intersection_r : forall i j (Hioj : Ioverlap i j),
+  Isupset i j -> Iintersection i j Hioj == j.
 Proof.
-  unfold Isupset, Iintersection, Ieq.
-  destruct i, j. simpl.
-  rewrite Q.min_r_iff, Q.max_r_iff.
-  intro H. destruct H.
-  split. q_order. q_order.
+  intros.
+  apply Ioverlap_sym in Hioj as Hjoi.
+  assert (Iintersection i j Hioj == Iintersection j i Hjoi) as Hiij_eq_jii.
+  apply (Iintersection_comm i j Hioj Hjoi).
+  apply (Ieq_trans (Iintersection i j Hioj) (Iintersection j i Hjoi) j Hiij_eq_jii).
+  now apply Isubset_intersection_l.
 Qed.
 
-Definition Idot (i : Interval) := (lower i == upper i)%Q.
 
-Lemma Iintersection_if_divided1 : forall x y, x < y -> Iempty (Iintersection x y).
-Proof.
-  unfold Ilt, Iempty, Iintersection.
-  destruct x, y.
-  simpl.
-  rewrite Qmin_lt_max_iff.
-  intros. now left; right.
-Qed.
-
-Lemma Iintersection_if_divided2 : forall x y,
-  Inempty x -> Inempty y -> (upper x == lower y)%Q -> Idot (Iintersection x y).
-Proof.
-  unfold Inempty, Idot, Iintersection.
-  simpl. intros.
-  rewrite <- Q.max_l_iff in H. rewrite <- Q.min_l_iff in H0.
-  rewrite <- H1, Q.max_comm, H, H1, H0. q_order.
-Qed.
-
-Lemma Iintersection_if_divided3 : forall x y,
-  (lower y < upper x)%Q /\ (lower x <= lower y)%Q /\ (upper x <= upper y)%Q ->
-    Inempty (Iintersection x y).
-Proof.
-  unfold Inempty, Iintersection.
-  simpl. intros x y H. destruct H as (H, H0), H0.
-  rewrite Q.max_lub_iff, Q.min_glb_iff, Q.min_glb_iff.
-  split.
-  - split. q_order. q_order.
-  - split. q_order. q_order.
-Qed.
-
-Lemma Iintersection_if_divided4 : forall x y,
-  x == y -> x == Iintersection x y /\ y == Iintersection x y.
-Proof.
-  unfold Ieq, Iintersection.
-  simpl. intros x y H.  destruct H.
-  rewrite Qeq_comm, Q.max_l_iff
-        , Qeq_comm, Q.min_l_iff
-        , Qeq_comm, Q.max_r_iff
-        , Qeq_comm, Q.min_r_iff.
-  split.
-  - split. q_order. q_order.
-  - split. q_order. q_order.
-Qed.
-
-Lemma Iintersection_if_divided5 : forall x y, Isubset x y -> Iintersection x y == x.
-Proof.
-  unfold Isubset, Iintersection, Ieq.
-  simpl. intros x y H. destruct H.
-  rewrite Q.max_l_iff, Q.min_l_iff.
-  split. q_order. q_order.
-Qed.
-
-Lemma Iintersection_if_divided6 : forall x y, Isubset y x -> Iintersection y x == y.
-Proof.
-  now intros; apply Iintersection_if_divided5.
-Qed.
-
-Lemma Iintersection_if_divided7 : forall x y,
-  (lower x < upper y)%Q /\ (lower y <= lower x)%Q /\ (upper y <= upper x)%Q ->
-    Inempty (Iintersection y x).
-Proof.
-  now intros; apply Iintersection_if_divided3.
-Qed.
-
-Lemma Iintersection_if_divided8 : forall x y,
-  Inempty y -> Inempty x ->
-  (upper y == lower x)%Q -> Idot (Iintersection y x).
-Proof.
-  now intros; apply Iintersection_if_divided2.
-Qed.
-
-Lemma Iintersection_if_divided9 : forall x y, y < x -> Iempty (Iintersection y x).
-Proof.
-  now intros; apply Iintersection_if_divided1.
-Qed.
-
-Lemma Iempty_intersection : forall i j, Iempty i -> Iempty (Iintersection i j).
-Proof.
-  unfold Iempty, Iintersection.
-  simpl. intros.
-  rewrite Qmin_lt_max_iff.
-  now left; left.
-Qed.
-
-Definition Ioverlap (i j : Interval) : Prop :=
-  Inempty (Iintersection i j).
-
-Lemma Ioverlap_comm : forall i j, Ioverlap i j <-> Ioverlap j i.
-Proof.
-  unfold Ioverlap, Inempty, Iintersection.
-  intros. simpl. split.
-  - now rewrite Qmax_le_min_iff, Qmax_le_min_iff.
-  - now rewrite Qmax_le_min_iff, Qmax_le_min_iff.
-Qed.
-
+(*
 Lemma Ilt_not_overlap : forall i j,
   i < j -> ~Ioverlap i j.
 Proof.
@@ -354,7 +490,9 @@ Proof.
   - split. q_order. q_order.
   - split. q_order. q_order.
 Qed.
+*)
 
+(*
 Lemma Ioverlap_nempty_intersection_iff : forall i j,
   Inempty i -> Inempty j -> Inempty (Iintersection i j) <-> Ioverlap i j.
 Proof.
@@ -373,36 +511,5 @@ Proof.
   -- destruct H1 as [H1|H1]. q_order. q_order.
   -- destruct H1 as [H1|H1]. q_order. q_order.
 Qed.
+*)
 
-Lemma Isubset_overlap :
-  forall i j, Inempty i -> Inempty j -> Isubset i j -> Ioverlap i j.
-Proof.
-  unfold Isubset, Ioverlap, Inempty, Iintersection.
-  destruct i, j. simpl.
-  rewrite Qmax_le_min_iff.
-  intros H H0 H1. destruct H1.
-  split.
-  - split. q_order. q_order.
-  - split. q_order. q_order.
-Qed.
-
-Lemma Isupset_overlap :
-  forall i j, Inempty i -> Inempty j -> Isupset i j -> Ioverlap i j.
-Proof.
-  intros. rewrite Ioverlap_comm. now apply Isubset_overlap.
-Qed.
-
-Lemma Ilt_overlap_gt_dec : forall x y, Inempty x -> Inempty y -> {x < y} + {Ioverlap x y} + {x > y}.
-Proof.
-  unfold Ilt, Ioverlap, Inempty, Iintersection.
-  destruct x as (xl, xu), y as (yl, yu). simpl. intros.
-  destruct (Qlt_le_dec xu yl).
-  - now left; left.
-  - destruct (Qlt_le_dec yu xl).
-  -- right. q_order.
-  -- left. right.
-     rewrite Qmax_le_min_iff.
-     split.
-  --- split. q_order. q_order.
-  --- split. q_order. q_order.
-Qed.
