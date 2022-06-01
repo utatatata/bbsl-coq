@@ -5,6 +5,8 @@ Require Import Arith.
 Definition Interval : Type := { lb_ub | fst lb_ub <= snd lb_ub }.
 
 Declare Scope Interval_scope.
+Bind Scope Interval_scope with Interval.
+Delimit Scope Interval_scope with Interval.
 Open Scope Interval_scope.
 
 Definition lb (i : Interval) := match i with exist _ tuple _ => fst tuple end.
@@ -15,13 +17,21 @@ Definition width (i : Interval) := ub i - lb i.
 
 Definition Ieq i j := lb i = lb j /\ ub i = ub j.
 Definition Ilt i j := ub i < lb j.
+(*
 Definition Ile i j := ub i <= lb j.
+*)
 Notation Igt a b := (Ilt b a) (only parsing).
+(*
 Notation Ige a b := (Ile b a) (only parsing).
+*)
 
+(*
 Definition Isubset i j := lb j < lb i /\ ub i <= ub j \/ lb j <= lb i /\ ub i < ub j.
+*)
 Definition Isubseteq i j := lb j <= lb i /\ ub i <= ub j.
+(*
 Notation Isupset a b := (Isubset b a) (only parsing).
+*)
 Notation Isupseteq a b := (Isubseteq b a) (only parsing).
 
 Definition Ioverlap (i j : Interval) : Prop :=
@@ -39,18 +49,36 @@ Defined.
 
 Infix "==" := Ieq (at level 70, no associativity) : Interval_scope.
 Infix "<" := Ilt : Interval_scope.
+(*
 Infix "<=" := Ile : Interval_scope.
+*)
 Notation "x > y" := (Ilt y x)(only parsing) : Interval_scope.
+Notation "x < y < z" := (x<y/\y<z) : Interval_scope.
+(*
 Notation "x >= y" := (Ile y x)(only parsing) : Interval_scope.
 Notation "x <= y <= z" := (x<=y/\y<=z) : Interval_scope.
+*)
 
 #[global]
+Hint Unfold Ieq Ilt Isubseteq Ioverlap Iintersection : iarith.
+(*
 Hint Unfold Ieq Ilt Ile Isubset Isubseteq Ioverlap Iintersection : iarith.
+*)
 #[global]
 Hint Extern 5 (?X1 <> ?X2) => intro; discriminate: qarith.
 
 
 (** * Decidability *)
+
+Theorem Ieq_dec : forall i j, {i == j} + {~ i == j}.
+Proof.
+  unfold Ieq. destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
+  destruct (Nat.eq_dec lbi lbj), (Nat.eq_dec ubi ubj).
+  - left. split. assumption. assumption.
+  - right. intros (H, H0). apply (n H0).
+  - right. intros (H, H0). apply (n H).
+  - right. intros (H, H0). apply (n H).
+Qed.
 
 Theorem Ilt_overlap_gt_dec : forall i j, {i < j} + {Ioverlap i j} + {i > j}.
 Proof.
@@ -163,7 +191,7 @@ Proof.
   --- apply (le_lt_trans lbi ubj lbi H0) in l2. apply lt_irrefl in l2. contradiction.
 Qed.
 
-(** * Decidability of Relation Connection Calculus *)
+(** Decidability of Relation Connection Calculus *)
 
 Theorem rcc_dec : forall i j,
   { dcleft i j } + { ecleft i j } + { poleft i j } +
@@ -213,16 +241,6 @@ Proof.
   apply (eq_trans H H1). apply (eq_trans H0 H2).
 Qed.
 
-Theorem Ieq_dec : forall i j, {i == j} + {~ i == j}.
-Proof.
-  unfold Ieq. destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
-  destruct (Nat.eq_dec lbi lbj), (Nat.eq_dec ubi ubj).
-  - left. split. assumption. assumption.
-  - right. intros (H, H0). apply (n H0).
-  - right. intros (H, H0). apply (n H).
-  - right. intros (H, H0). apply (n H).
-Qed.
-
 Theorem Inot_eq_sym i j : ~ i == j -> ~ j == i.
 Proof.
   unfold Ieq, not. destruct i as ((lbi, ubi), p), j as ((lbj, ubj), q). simpl in p, q. simpl.
@@ -255,6 +273,7 @@ Proof.
   unfold Ilt, eq. intros (i, p) (j, q) (k, r). simpl. intros (H, H0). Nat.order.
 Qed.
 
+(*
 Lemma Ile_antisym : forall i j, i <= j -> j <= i -> i == j.
 Proof.
   unfold Ile, Ieq. intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
@@ -300,6 +319,7 @@ Proof.
     now apply (le_trans (lb k) (lb j) (lb i)).
     now apply (lt_trans (ub i) (ub j) (ub k)).
 Qed.
+*)
 
 Lemma Isubseteq_refl : forall i, Isubseteq i i.
 Proof.
@@ -322,6 +342,7 @@ Proof.
   apply (le_trans (ub i) (ub j) (ub k) Hubi_le_ubj Hubj_le_ubk).
 Qed.
 
+(*
 Lemma Isubset_eq_cases : forall i j, Isubseteq i j -> Isubset i j \/ Ieq i j.
 Proof.
   unfold Isubseteq, Isubset, Ieq.
@@ -369,6 +390,7 @@ Proof.
     now apply (le_trans lbk lbj lbi).
     now apply (le_lt_trans ubi ubj ubk).
 Qed.
+*)
 
 Lemma Ioverlap_refl : forall i, Ioverlap i i.
 Proof.
@@ -382,6 +404,7 @@ Proof.
   assumption. assumption.
 Qed.
 
+(*
 Lemma Isubset_overlap :
   forall i j, Isubset i j -> Ioverlap i j.
 Proof.
@@ -401,8 +424,10 @@ Lemma Isupset_overlap :
 Proof.
   intros. apply Ioverlap_sym. now apply Isubset_overlap.
 Qed.
+*)
 
-Lemma Iintersection_comm : forall i j (Hioj : Ioverlap i j) (Hjoi : Ioverlap j i), Iintersection i j Hioj == Iintersection j i Hjoi.
+Lemma Iintersection_comm : forall i j (Hioj : Ioverlap i j) (Hjoi : Ioverlap j i),
+  Iintersection i j Hioj == Iintersection j i Hjoi.
 Proof.
   unfold Iintersection, Ieq, Ioverlap.
   intros ((lbi, ubi), p) ((lbj, ubj), q). simpl in p, q. simpl.
@@ -423,6 +448,7 @@ Proof.
   - rewrite Nat.min_le_iff. right. apply le_refl.
 Qed.
 
+(*
 Lemma Isubset_intersection_l : forall i j (Hioj : Ioverlap i j),
   Isubset i j -> Iintersection i j Hioj == i.
 Proof.
@@ -445,6 +471,7 @@ Proof.
   apply (Ieq_trans (Iintersection i j Hioj) (Iintersection j i Hjoi) j Hiij_eq_jii).
   now apply Isubset_intersection_l.
 Qed.
+*)
 
 
 (*

@@ -6,6 +6,8 @@ Import ListNotations.
 Local Open Scope string_scope.
 
 Declare Scope BBSL_scope.
+Bind Scope BB_scope with BB.
+Delimit Scope BB_scope with BB.
 Local Open Scope BBSL_scope.
 
 
