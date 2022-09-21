@@ -15,8 +15,12 @@ BBSL is a formal language specifying spatial relation between Bounding Boxes wit
 
 ## Installation
 
+1. Install `Extra`
+2. Install `BBSL`
+
+### Build and install the library `Extra`
+
 ```bash
-# build and install the library `Extra`
 $ cd Extra
 
 # build
@@ -24,8 +28,11 @@ $ make
 
 # move the library `Extra` to /usr/lib/coq/user-contrib/
 $ sudo make install
+```
 
-# build and install the library `BBSL`
+### Build and install the library `BBSL`
+
+```bash
 $ cd BBSL
 
 $ make
